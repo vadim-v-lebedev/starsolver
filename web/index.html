@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>StarSolver</title>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #07070f;
+      color: #d8d8f0;
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    #status {
+      padding: 8px 12px;
+      font-size: 13px;
+      line-height: 1.4;
+      background: #0e0e1c;
+      border-bottom: 1px solid #1e1e38;
+      min-height: 44px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    #image-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: #040408;
+      position: relative;
+    }
+
+    #preview {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: none;
+    }
+
+    #placeholder {
+      color: #333355;
+      font-size: 15px;
+      text-align: center;
+      padding: 24px;
+    }
+
+    #progress-bar {
+      position: absolute;
+      bottom: 0; left: 0;
+      height: 2px;
+      background: #4466ff;
+      width: 0%;
+      transition: width 0.3s ease;
+      display: none;
+    }
+
+    #buttons {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      padding: 8px;
+      background: #0e0e1c;
+      border-top: 1px solid #1e1e38;
+    }
+
+    button {
+      padding: 13px 4px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #1a1a30;
+      color: #9090b8;
+      touch-action: manipulation;
+      transition: background 0.1s, color 0.1s, opacity 0.1s;
+    }
+
+    button:not(:disabled):active { background: #2a2a50; color: #c0c8ff; }
+    button:disabled { opacity: 0.3; cursor: default; }
+
+    button.active:not(:disabled) {
+      background: #1e2d5a;
+      color: #a0c0ff;
+    }
+  </style>
+</head>
+<body>
+
+<div id="status">Loading Python environment…</div>
+
+<div id="image-area">
+  <img id="preview" alt="star field">
+  <span id="placeholder">Pick or take an image to begin</span>
+  <div id="progress-bar"></div>
+</div>
+
+<div id="buttons">
+  <button id="btnCamera"  disabled>Camera</button>
+  <button id="btnGallery" disabled>Gallery</button>
+  <button id="btnDetect"  disabled>Detect</button>
+  <button id="btnSolve"   disabled>Solve</button>
+  <button id="btnRefine"  disabled>Refine</button>
+  <button id="btnSave"    disabled>Save</button>
+</div>
+
+<input id="inputCamera"  type="file" accept="image/*" capture="environment" style="display:none">
+<input id="inputGallery" type="file" accept="image/*"                       style="display:none">
+
+<script>
+// ── state ─────────────────────────────────────────────────────────────────────
+let pyodide         = null;
+let pipeline        = null;
+let busy            = false;
+let imagePath       = '/tmp/input.jpg';
+let outputPath      = '/tmp/output.jpg';
+let currentBlobURL  = null;
+let solvedOk        = false;
+let detectThreshold = 20.0;
+
+// ── DOM ───────────────────────────────────────────────────────────────────────
+const elStatus   = document.getElementById('status');
+const elPreview  = document.getElementById('preview');
+const elHolder   = document.getElementById('placeholder');
+const elProgress = document.getElementById('progress-bar');
+const btnCamera  = document.getElementById('btnCamera');
+const btnGallery = document.getElementById('btnGallery');
+const btnDetect  = document.getElementById('btnDetect');
+const btnSolve   = document.getElementById('btnSolve');
+const btnRefine  = document.getElementById('btnRefine');
+const btnSave    = document.getElementById('btnSave');
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+function setStatus(msg) { elStatus.textContent = msg; }
+
+function setProgress(pct) {
+  if (pct === null) { elProgress.style.display = 'none'; return; }
+  elProgress.style.display = 'block';
+  elProgress.style.width   = pct + '%';
+}
+
+function setButtons({ camera=false, gallery=false, detect=false,
+                      solve=false, refine=false, save=false } = {}) {
+  btnCamera.disabled  = !camera;
+  btnGallery.disabled = !gallery;
+  btnDetect.disabled  = !detect;
+  btnSolve.disabled   = !solve;
+  btnRefine.disabled  = !refine;
+  btnSave.disabled    = !save;
+  [btnDetect, btnSolve, btnRefine].forEach(b => b.classList.remove('active'));
+}
+
+function setBusy(on) {
+  busy = on;
+  if (on) setButtons({});
+}
+
+function showImage(data) {
+  if (currentBlobURL) URL.revokeObjectURL(currentBlobURL);
+  currentBlobURL = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
+  elPreview.src          = currentBlobURL;
+  elPreview.style.display = 'block';
+  elHolder.style.display  = 'none';
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function fetchText(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Fetch failed (${r.status}): ${url}`);
+  return r.text();
+}
+
+async function fetchBinary(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Fetch failed (${r.status}): ${url}`);
+  return new Uint8Array(await r.arrayBuffer());
+}
+
+// ── Pyodide initialisation ────────────────────────────────────────────────────
+const CDN_SS  = 'https://cdn.jsdelivr.net/gh/vadim-v-lebedev/starsolver@main/starsolver';
+const CDN_T3  = 'https://cdn.jsdelivr.net/gh/vadim-v-lebedev/tetra3@master/tetra3';
+
+const SS_FILES = ['pipeline.py','detector.py','solver.py','refine.py',
+                  'plate.py','draw.py','catalog.py','minicv.py'];
+const T3_FILES = ['__init__.py','tetra3.py'];
+
+async function initPyodide() {
+  try {
+    setProgress(5);
+    setStatus('Loading Pyodide…');
+    pyodide = await loadPyodide();
+
+    setProgress(20);
+    setStatus('Loading numpy · Pillow…');
+    await pyodide.loadPackage(['numpy', 'Pillow']);
+
+    setProgress(40);
+    setStatus('Fetching starsolver source…');
+    pyodide.FS.mkdir('/ss');
+    for (const f of SS_FILES) {
+      pyodide.FS.writeFile(`/ss/${f}`, await fetchText(`${CDN_SS}/${f}`));
+    }
+
+    setStatus('Fetching tetra3…');
+    pyodide.FS.mkdir('/ss/tetra3');
+    for (const f of T3_FILES) {
+      pyodide.FS.writeFile(`/ss/tetra3/${f}`, await fetchText(`${CDN_T3}/${f}`));
+    }
+
+    setProgress(55);
+    setStatus('Fetching star catalog (1.2 MB)…');
+    pyodide.FS.writeFile('/ss/hip.npz', await fetchBinary(`${CDN_SS}/hip.npz`));
+
+    setProgress(70);
+    setStatus('Fetching pattern database (7.7 MB)…');
+    pyodide.FS.writeFile('/ss/tetra3_database.npz',
+                         await fetchBinary(`${CDN_SS}/tetra3_database.npz`));
+
+    setProgress(90);
+    setStatus('Initialising pipeline…');
+    await pyodide.runPythonAsync(`
+import sys
+sys.path.insert(0, '/ss')
+import pipeline
+`);
+    pipeline = pyodide.pyimport('pipeline');
+
+    setProgress(100);
+    await sleep(300);
+    setProgress(null);
+    setStatus('Ready — pick or take an image.');
+    setButtons({ camera: true, gallery: true });
+
+  } catch (e) {
+    setProgress(null);
+    setStatus('Init failed: ' + (e.message || e));
+    console.error(e);
+  }
+}
+
+// ── image loading ─────────────────────────────────────────────────────────────
+async function onImageFile(file) {
+  const buf = await file.arrayBuffer();
+  pyodide.FS.writeFile(imagePath, new Uint8Array(buf));
+  showImage(new Uint8Array(buf));
+  solvedOk        = false;
+  detectThreshold = 20.0;
+  btnDetect.textContent = 'Detect';
+  setButtons({ camera: true, gallery: true, detect: true });
+  setStatus('Image loaded. Tap Detect.');
+}
+
+document.getElementById('inputCamera').addEventListener('change', e => {
+  if (e.target.files[0]) onImageFile(e.target.files[0]);
+  e.target.value = '';
+});
+document.getElementById('inputGallery').addEventListener('change', e => {
+  if (e.target.files[0]) onImageFile(e.target.files[0]);
+  e.target.value = '';
+});
+
+btnCamera.addEventListener('click',  () => document.getElementById('inputCamera').click());
+btnGallery.addEventListener('click', () => document.getElementById('inputGallery').click());
+
+// ── detect ────────────────────────────────────────────────────────────────────
+btnDetect.addEventListener('click', async () => {
+  if (busy || !pipeline) return;
+  setBusy(true);
+  const thr = detectThreshold;
+  setStatus(`Detecting stars (threshold=${thr})…`);
+  await sleep(30);
+
+  try {
+    const r   = pipeline.detect(imagePath, outputPath, thr);
+    const n   = r.get('count');
+    const msg = r.get('message').toString();
+    r.destroy();
+
+    showImage(pyodide.FS.readFile(outputPath));
+    detectThreshold = thr / 2;
+    btnDetect.textContent = 'Detect ÷2';
+    solvedOk = false;
+
+    const hint = n < 4
+      ? `\nToo few stars — tap Detect ÷2 (threshold=${detectThreshold.toFixed(0)})`
+      : '';
+    setStatus(`${msg} · threshold=${thr}${hint}`);
+    setButtons({ camera: true, gallery: true, detect: true, solve: n >= 4 });
+
+  } catch (e) {
+    setStatus('Detect error: ' + e.message);
+    setButtons({ camera: true, gallery: true, detect: true });
+    console.error(e);
+  }
+  busy = false;
+});
+
+// ── solve ─────────────────────────────────────────────────────────────────────
+btnSolve.addEventListener('click', async () => {
+  if (busy || !pipeline) return;
+  setBusy(true);
+  setStatus('Solving (no timeout)…');
+  await sleep(30);
+
+  try {
+    const r      = pipeline.solve(imagePath, outputPath, false);
+    const status = r.get('status').toString();
+
+    if (status === 'solved') {
+      const ra   = r.get('RA').toFixed(2);
+      const dec  = r.get('Dec').toFixed(2);
+      const fov  = r.get('FOV').toFixed(1);
+      const rmse = r.get('RMSE').toFixed(0);
+      const n    = r.get('matches');
+      const t    = (r.get('T_solve') / 1000).toFixed(1);
+      const cons = r.get('constellations').toString();
+      r.destroy();
+
+      showImage(pyodide.FS.readFile(outputPath));
+      solvedOk = true;
+      let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} matches  ${t}s`;
+      if (cons) msg += `\n${cons}`;
+      setStatus(msg);
+      setButtons({ camera:true, gallery:true, detect:true, solve:true, refine:true, save:true });
+
+    } else {
+      r.destroy();
+      solvedOk = false;
+      setStatus(status === 'too_few_stars'
+        ? 'Too few stars for plate solving — try Detect ÷2.'
+        : 'No plate solution found.');
+      setButtons({ camera: true, gallery: true, detect: true, solve: true });
+    }
+
+  } catch (e) {
+    setStatus('Solve error: ' + e.message);
+    setButtons({ camera: true, gallery: true, detect: true, solve: true });
+    console.error(e);
+  }
+  busy = false;
+});
+
+// ── refine ────────────────────────────────────────────────────────────────────
+btnRefine.addEventListener('click', async () => {
+  if (busy || !pipeline) return;
+  setBusy(true);
+  setStatus('Refining solution…');
+  await sleep(30);
+
+  try {
+    const r      = pipeline.refine_solution(imagePath, outputPath);
+    const status = r.get('status').toString();
+
+    if (status === 'refined') {
+      const ra   = r.get('RA').toFixed(2);
+      const dec  = r.get('Dec').toFixed(2);
+      const fov  = r.get('FOV').toFixed(1);
+      const rmse = r.get('RMSE').toFixed(0);
+      const n    = r.get('matches');
+      const unkn = r.get('unknowns');
+      const lim  = r.get('mag_limit').toFixed(1);
+      const t    = (r.get('T_refine') / 1000).toFixed(1);
+      const cons = r.get('constellations').toString();
+      r.destroy();
+
+      showImage(pyodide.FS.readFile(outputPath));
+      const unkStr = unkn > 0 ? `  ${unkn} unidentified` : '';
+      let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} id  lim=${lim}m  ${t}s${unkStr}`;
+      if (cons) msg += `\n${cons}`;
+      setStatus(msg);
+      setButtons({ camera:true, gallery:true, detect:true, solve:true, refine:true, save:true });
+
+    } else {
+      r.destroy();
+      setStatus('Refinement failed — try re-solving.');
+      setButtons({ camera:true, gallery:true, detect:true, solve:solvedOk, refine:solvedOk });
+    }
+
+  } catch (e) {
+    setStatus('Refine error: ' + e.message);
+    setButtons({ camera:true, gallery:true, detect:true, solve:solvedOk, refine:solvedOk });
+    console.error(e);
+  }
+  busy = false;
+});
+
+// ── save ──────────────────────────────────────────────────────────────────────
+btnSave.addEventListener('click', () => {
+  try {
+    const data = pyodide.FS.readFile(outputPath);
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
+    a.download = `starsolver_${Date.now()}.jpg`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setStatus('Image saved.');
+  } catch (e) {
+    setStatus('Save error: ' + e.message);
+  }
+});
+
+// ── boot ──────────────────────────────────────────────────────────────────────
+initPyodide();
+</script>
+</body>
+</html>
