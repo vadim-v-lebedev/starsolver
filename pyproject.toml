@@ -10,8 +10,11 @@ requires-python = ">=3.9"
 dependencies = [
     "numpy",
     "Pillow",
-    "tetra3",
+    "tetra3 @ git+https://github.com/vadim-v-lebedev/tetra3.git",
 ]
 
 [project.scripts]
 starsolver = "starsolver.pipeline:main"
+
+[tool.setuptools.package-data]
+starsolver = ["*.npz"]
