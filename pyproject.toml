@@ -17,4 +17,4 @@ dependencies = [
 starsolver = "starsolver.pipeline:main"
 
 [tool.setuptools.package-data]
-starsolver = ["*.npz"]
+starsolver = ["*.npz", "*.ttf"]

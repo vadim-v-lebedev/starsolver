@@ -23,8 +23,10 @@ def load_image(path: str, mode: str = 'RGB') -> np.ndarray:
 
 def _get_label_font(size: int = 32):
     """Return a PIL ImageFont with Greek support, falling back to default."""
+    import os
     from PIL import ImageFont
     candidates = [
+        os.path.join(os.path.dirname(__file__), 'DejaVuSans.ttf'),  # bundled
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
         "/system/fonts/NotoSans-Regular.ttf",   # Android

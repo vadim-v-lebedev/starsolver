@@ -210,6 +210,8 @@ async function initPyodide() {
     for (const f of SS_FILES) {
       pyodide.FS.writeFile(`/ss/${f}`, await fetchText(`${CDN_SS}/${f}`));
     }
+    pyodide.FS.writeFile('/ss/DejaVuSans.ttf',
+                         await fetchBinary(`${CDN_SS}/DejaVuSans.ttf`));
 
     setStatus('Fetching tetra3…');
     pyodide.FS.mkdir('/ss/tetra3');
