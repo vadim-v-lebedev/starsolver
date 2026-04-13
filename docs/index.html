@@ -187,7 +187,12 @@ async function fetchBinary(url) {
 }
 
 // ── Pyodide initialisation ────────────────────────────────────────────────────
-const CDN_SS  = 'https://cdn.jsdelivr.net/gh/vadim-v-lebedev/starsolver@main/starsolver';
+// When served from localhost, load Python source from the local repo instead
+// of CDN so that edits are reflected immediately without committing.
+const _LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+const CDN_SS  = _LOCAL
+  ? '../starsolver'
+  : 'https://cdn.jsdelivr.net/gh/vadim-v-lebedev/starsolver@main/starsolver';
 const CDN_T3  = 'https://cdn.jsdelivr.net/gh/vadim-v-lebedev/tetra3@master/tetra3';
 
 const SS_FILES = ['pipeline.py','detector.py','solver.py','refine.py',
@@ -210,8 +215,8 @@ async function initPyodide() {
     for (const f of SS_FILES) {
       pyodide.FS.writeFile(`/ss/${f}`, await fetchText(`${CDN_SS}/${f}`));
     }
-    pyodide.FS.writeFile('/ss/DejaVuSans.ttf',
-                         await fetchBinary(`${CDN_SS}/DejaVuSans.ttf`));
+    const fontBytes = await fetchBinary(`${CDN_SS}/DejaVuSans.ttf`);
+    pyodide.FS.writeFile('/ss/DejaVuSans.ttf', fontBytes);
 
     setStatus('Fetching tetra3…');
     pyodide.FS.mkdir('/ss/tetra3');
