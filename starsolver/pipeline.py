@@ -83,6 +83,43 @@ class Pipeline:
             'count': len(self.stars),
         }
 
+    def apply_mask(self, image_path: str, output_path: str,
+                   mask_bytes: bytes, mask_w: int, mask_h: int) -> dict:
+        """
+        Remove detections that fall inside the painted mask and redraw.
+
+        mask_bytes: flat uint8 alpha array, row-major, shape (mask_h, mask_w)
+        Returns {'count': int, 'message': str}
+        """
+        if not self.stars:
+            return {'count': 0, 'message': 'No detections to mask.'}
+
+        mask = np.frombuffer(mask_bytes, dtype=np.uint8).reshape(mask_h, mask_w)
+
+        img = load_image(image_path)
+        ih, iw = img.shape[:2]
+        sx = mask_w / iw
+        sy = mask_h / ih
+
+        before = len(self.stars)
+        self.stars = [
+            s for s in self.stars
+            if mask[min(int(s['y'] * sy), mask_h - 1),
+                    min(int(s['x'] * sx), mask_w - 1)] < 128
+        ]
+        removed = before - len(self.stars)
+        self.plate = None
+
+        d = self.config.draw
+        draw_detections(img, self.stars,
+                        color=d.detection_color, thickness=d.detection_thickness,
+                        star_radius=d.star_radius, max_draw=d.max_draw)
+        Image.fromarray(img).save(output_path)
+
+        n = len(self.stars)
+        msg = f'Removed {removed} detection{"s" if removed != 1 else ""}. {n} remaining.'
+        return {'count': n, 'message': msg}
+
     def solve(self, image_path: str, output_path: str,
               timeout_override=None) -> dict:
         """

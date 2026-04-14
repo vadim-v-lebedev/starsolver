@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>StarSolver</title>
+  <title>StarSolver demo</title>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -178,11 +178,69 @@
 
     /* 6-column grid so bottom two buttons share the last row equally */
     #buttons { grid-template-columns: repeat(6, 1fr); }
-    #btnCamera, #btnGallery, #btnDetect,
-    #btnSolve,  #btnRefine,  #btnSave   { grid-column: span 2; }
+    #btnLoad,  #btnDetect, #btnMask,
+    #btnSolve, #btnRefine, #btnSave   { grid-column: span 2; }
     #btnSettings, #btnAchievements      { grid-column: span 3; }
 
     /* ── panorama viewer ───────────────────────────────────────────────────── */
+
+    #mask-editor {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: #000;
+      flex-direction: column;
+    }
+    #mask-editor.open { display: flex; }
+
+    #mask-canvas-wrap {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    #mask-bg {
+      max-width: 100%;
+      max-height: 100%;
+      display: block;
+      user-select: none;
+      -webkit-user-select: none;
+      pointer-events: none;
+    }
+    #mask-canvas {
+      position: absolute;
+      cursor: crosshair;
+      touch-action: none;
+    }
+    #mask-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: #12121e;
+      border-top: 1px solid #2a2a44;
+      flex-shrink: 0;
+    }
+    #mask-toolbar button {
+      padding: 7px 14px;
+      border: 1px solid #444;
+      border-radius: 6px;
+      background: #1e1e32;
+      color: #ccc;
+      font-size: 14px;
+      cursor: pointer;
+      touch-action: manipulation;
+      white-space: nowrap;
+    }
+    #mask-toolbar button.active { background: #2a2a50; border-color: #6060aa; color: #fff; }
+    #mask-toolbar button#maskBtnApply  { color: #70c870; border-color: #406040; }
+    #mask-toolbar button#maskBtnCancel { color: #c07070; border-color: #604040; }
+    #mask-size-wrap { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 80px; }
+    #mask-size-wrap label { font-size: 12px; color: #888; white-space: nowrap; }
+    #maskBrushSize { flex: 1; }
 
     #pano-viewer {
       display: none;
@@ -371,9 +429,9 @@
 </div>
 
 <div id="buttons">
-  <button id="btnCamera"   disabled>Camera</button>
-  <button id="btnGallery"  disabled>Gallery</button>
+  <button id="btnLoad"     disabled>Load</button>
   <button id="btnDetect"   disabled>Detect</button>
+  <button id="btnMask"     disabled>Mask</button>
   <button id="btnSolve"    disabled>Solve</button>
   <button id="btnRefine"   disabled>Refine</button>
   <button id="btnSave"     disabled>Save</button>
@@ -381,9 +439,26 @@
   <button id="btnAchievements" disabled>Achievements</button>
 </div>
 
-<input id="inputCamera"     type="file" accept="image/*" capture="environment" style="display:none">
-<input id="inputGallery"    type="file" accept="image/*"                       style="display:none">
+<input id="inputGallery"    type="file" accept="image/*" style="display:none">
 <input id="inputPanoReload" type="file" accept="image/*"                       style="display:none">
+
+<div id="mask-editor">
+  <div id="mask-canvas-wrap">
+    <img id="mask-bg" draggable="false" alt="">
+    <canvas id="mask-canvas"></canvas>
+  </div>
+  <div id="mask-toolbar">
+    <button id="maskBtnDraw"  class="active">Draw</button>
+    <button id="maskBtnErase">Erase</button>
+    <div class="mask-size-wrap" style="display:flex;align-items:center;gap:6px;flex:1;min-width:80px">
+      <label style="font-size:12px;color:#888">Size</label>
+      <input type="range" id="maskBrushSize" min="5" max="150" value="40" style="flex:1">
+    </div>
+    <button id="maskBtnClear">Clear</button>
+    <button id="maskBtnApply">Apply</button>
+    <button id="maskBtnCancel">Cancel</button>
+  </div>
+</div>
 
 <div id="pano-viewer">
   <canvas id="pano-canvas"></canvas>
@@ -402,6 +477,7 @@ let currentBlobURL   = null;
 let currentImageFile  = null;
 let currentImageBytes = null;
 const imageStore      = new Map();  // filename → { bytes|null, ra, dec, fov, plate }
+let starsOk         = false;
 let solvedOk        = false;
 let solveUnlimited  = false;
 let detectThreshold = 20.0;
@@ -411,9 +487,9 @@ const elStatus   = document.getElementById('status');
 const elPreview  = document.getElementById('preview');
 const elHolder   = document.getElementById('placeholder');
 const elProgress = document.getElementById('progress-bar');
-const btnCamera   = document.getElementById('btnCamera');
-const btnGallery  = document.getElementById('btnGallery');
+const btnLoad     = document.getElementById('btnLoad');
 const btnDetect   = document.getElementById('btnDetect');
+const btnMask     = document.getElementById('btnMask');
 const btnSolve    = document.getElementById('btnSolve');
 const btnRefine   = document.getElementById('btnRefine');
 const btnSave     = document.getElementById('btnSave');
@@ -428,12 +504,12 @@ function setProgress(pct) {
   elProgress.style.width   = pct + '%';
 }
 
-function setButtons({ camera=false, gallery=false, detect=false,
+function setButtons({ load=false, detect=false, mask=false,
                       solve=false, refine=false, save=false,
                       settings=false, achievements=false } = {}) {
-  btnCamera.disabled        = !camera;
-  btnGallery.disabled       = !gallery;
+  btnLoad.disabled          = !load;
   btnDetect.disabled        = !detect;
+  btnMask.disabled          = !mask;
   btnSolve.disabled         = !solve;
   btnRefine.disabled        = !refine;
   btnSave.disabled          = !save;
@@ -792,7 +868,7 @@ pano     = Panorama()
     await sleep(300);
     setProgress(null);
     setStatus('Ready — pick or take an image.');
-    setButtons({ camera: true, gallery: true, settings: true, achievements: true });
+    setButtons({ load: true, settings: true, achievements: true });
 
   } catch (e) {
     setProgress(null);
@@ -808,26 +884,22 @@ async function onImageFile(file) {
   pyodide.FS.writeFile(imagePath, currentImageBytes);
   showImage(currentImageBytes);
   currentImageFile = file.name;
+  starsOk         = false;
   solvedOk        = false;
   solveUnlimited  = false;
   detectThreshold = 20.0;
   btnDetect.textContent = 'Detect';
   btnSolve.textContent  = 'Solve';
-  setButtons({ camera: true, gallery: true, detect: true, settings: true, achievements: true });
+  setButtons({ load: true, detect: true, settings: true, achievements: true });
   setStatus('Image loaded. Tap Detect.');
 }
 
-document.getElementById('inputCamera').addEventListener('change', e => {
-  if (e.target.files[0]) onImageFile(e.target.files[0]);
-  e.target.value = '';
-});
 document.getElementById('inputGallery').addEventListener('change', e => {
   if (e.target.files[0]) onImageFile(e.target.files[0]);
   e.target.value = '';
 });
 
-btnCamera.addEventListener('click',  () => document.getElementById('inputCamera').click());
-btnGallery.addEventListener('click', () => document.getElementById('inputGallery').click());
+btnLoad.addEventListener('click', () => document.getElementById('inputGallery').click());
 
 // ── detect ────────────────────────────────────────────────────────────────────
 btnDetect.addEventListener('click', async () => {
@@ -853,12 +925,13 @@ btnDetect.addEventListener('click', async () => {
     const hint = n < 4
       ? `\nToo few stars — tap Detect more (threshold=${detectThreshold.toFixed(0)})`
       : '';
+    starsOk = n >= 1;
     setStatus(`${msg} · threshold=${thr}${hint}`);
-    setButtons({ camera: true, gallery: true, detect: true, solve: n >= 4, settings: true, achievements: true });
+    setButtons({ load: true, detect: true, mask: starsOk, solve: n >= 4, settings: true, achievements: true });
 
   } catch (e) {
     setStatus('Detect error: ' + e.message);
-    setButtons({ camera: true, gallery: true, detect: true, settings: true, achievements: true });
+    setButtons({ load: true, detect: true, settings: true, achievements: true });
     console.error(e);
   }
   busy = false;
@@ -902,7 +975,7 @@ btnSolve.addEventListener('click', async () => {
       let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} matches  ${t}s`;
       if (cons) msg += `\n${cons}`;
       setStatus(msg);
-      setButtons({ camera:true, gallery:true, detect:true, solve:true, refine:true, save:true, settings:true, achievements:true});
+      setButtons({ load:true, detect:true, mask:starsOk, solve:true, refine:true, save:true, settings:true, achievements:true});
 
     } else {
       r.destroy();
@@ -918,12 +991,12 @@ btnSolve.addEventListener('click', async () => {
         btnSolve.textContent = 'Solve ∞';
         setStatus('No plate solution found — tap Solve ∞ to retry without timeout.');
       }
-      setButtons({ camera: true, gallery: true, detect: true, solve: true, settings: true, achievements: true });
+      setButtons({ load: true, detect: true, mask: starsOk, solve: true, settings: true, achievements: true });
     }
 
   } catch (e) {
     setStatus('Solve error: ' + e.message);
-    setButtons({ camera: true, gallery: true, detect: true, solve: true, settings: true, achievements: true });
+    setButtons({ load: true, detect: true, mask: starsOk, solve: true, settings: true, achievements: true });
     console.error(e);
   }
   busy = false;
@@ -958,21 +1031,150 @@ btnRefine.addEventListener('click', async () => {
       let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} id  lim=${lim}m  ${t}s${unkStr}`;
       if (cons) msg += `\n${cons}`;
       setStatus(msg);
-      setButtons({ camera:true, gallery:true, detect:true, solve:true, refine:true, save:true, settings:true, achievements:true});
+      setButtons({ load:true, detect:true, mask:starsOk, solve:true, refine:true, save:true, settings:true, achievements:true});
 
     } else {
       r.destroy();
       setStatus('Refinement failed — try re-solving.');
-      setButtons({ camera:true, gallery:true, detect:true, solve:solvedOk, refine:solvedOk, settings:true, achievements:true });
+      setButtons({ load:true, detect:true, mask:starsOk, solve:solvedOk, refine:solvedOk, settings:true, achievements:true });
     }
 
   } catch (e) {
     setStatus('Refine error: ' + e.message);
-    setButtons({ camera:true, gallery:true, detect:true, solve:solvedOk, refine:solvedOk, settings:true, achievements:true });
+    setButtons({ load:true, detect:true, mask:starsOk, solve:solvedOk, refine:solvedOk, settings:true, achievements:true });
     console.error(e);
   }
   busy = false;
 });
+
+// ── mask editor ───────────────────────────────────────────────────────────────
+{
+  const editor    = document.getElementById('mask-editor');
+  const maskBg    = document.getElementById('mask-bg');
+  const maskCanvas = document.getElementById('mask-canvas');
+  const maskCtx   = maskCanvas.getContext('2d');
+  let maskErasing = false;
+  let maskDrawing = false;
+  let maskLX = 0, maskLY = 0;
+
+  function maskPointerPos(e) {
+    const r = maskCanvas.getBoundingClientRect();
+    return [e.clientX - r.left, e.clientY - r.top];
+  }
+
+  function maskStroke(x1, y1, x2, y2) {
+    const size = parseInt(document.getElementById('maskBrushSize').value);
+    maskCtx.lineWidth   = size;
+    maskCtx.lineCap     = 'round';
+    maskCtx.lineJoin    = 'round';
+    maskCtx.globalCompositeOperation = maskErasing ? 'destination-out' : 'source-over';
+    maskCtx.strokeStyle = maskErasing ? 'rgba(0,0,0,1)' : 'rgba(220,50,50,0.55)';
+    maskCtx.beginPath();
+    maskCtx.moveTo(x1, y1);
+    maskCtx.lineTo(x2, y2);
+    maskCtx.stroke();
+  }
+
+  maskCanvas.addEventListener('pointerdown', e => {
+    maskDrawing = true;
+    maskCanvas.setPointerCapture(e.pointerId);
+    const [x, y] = maskPointerPos(e);
+    maskLX = x; maskLY = y;
+    maskStroke(x, y, x, y);   // dot on tap
+  });
+  maskCanvas.addEventListener('pointermove', e => {
+    if (!maskDrawing) return;
+    const [x, y] = maskPointerPos(e);
+    maskStroke(maskLX, maskLY, x, y);
+    maskLX = x; maskLY = y;
+  });
+  maskCanvas.addEventListener('pointerup',     () => { maskDrawing = false; });
+  maskCanvas.addEventListener('pointercancel', () => { maskDrawing = false; });
+
+  function openMaskEditor() {
+    const data = pyodide.FS.readFile(outputPath);
+    const url  = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
+    editor.classList.add('open');
+    maskBg.onload = () => {
+      URL.revokeObjectURL(url);
+      requestAnimationFrame(() => {
+        const ir = maskBg.getBoundingClientRect();
+        const wr = maskBg.parentElement.getBoundingClientRect();
+        maskCanvas.width  = Math.round(ir.width);
+        maskCanvas.height = Math.round(ir.height);
+        maskCanvas.style.width  = ir.width  + 'px';
+        maskCanvas.style.height = ir.height + 'px';
+        maskCanvas.style.left   = (ir.left - wr.left) + 'px';
+        maskCanvas.style.top    = (ir.top  - wr.top)  + 'px';
+      });
+    };
+    maskBg.src = url;
+    // reset to draw mode
+    maskErasing = false;
+    document.getElementById('maskBtnDraw').classList.add('active');
+    document.getElementById('maskBtnErase').classList.remove('active');
+  }
+
+  btnMask.addEventListener('click', () => {
+    if (busy) return;
+    openMaskEditor();
+  });
+
+  document.getElementById('maskBtnDraw').addEventListener('click', () => {
+    maskErasing = false;
+    document.getElementById('maskBtnDraw').classList.add('active');
+    document.getElementById('maskBtnErase').classList.remove('active');
+  });
+  document.getElementById('maskBtnErase').addEventListener('click', () => {
+    maskErasing = true;
+    document.getElementById('maskBtnErase').classList.add('active');
+    document.getElementById('maskBtnDraw').classList.remove('active');
+  });
+  document.getElementById('maskBtnClear').addEventListener('click', () => {
+    maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+  });
+  document.getElementById('maskBtnCancel').addEventListener('click', () => {
+    editor.classList.remove('open');
+  });
+
+  document.getElementById('maskBtnApply').addEventListener('click', async () => {
+    if (busy) return;
+
+    const imgData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+    // extract alpha channel only
+    const alpha = new Uint8Array(maskCanvas.width * maskCanvas.height);
+    for (let i = 0; i < alpha.length; i++) alpha[i] = imgData.data[i * 4 + 3];
+
+    editor.classList.remove('open');
+
+    if (!alpha.some(v => v > 128)) {
+      setStatus('Mask was empty — nothing removed.');
+      return;
+    }
+
+    setBusy(true);
+    setStatus('Applying mask…');
+    await sleep(30);
+    try {
+      pyodide.globals.set('_mask_bytes', alpha);
+      pyodide.globals.set('_mask_w', maskCanvas.width);
+      pyodide.globals.set('_mask_h', maskCanvas.height);
+      const r = JSON.parse(pyodide.runPython(
+        `import json; json.dumps(pipeline.apply_mask('${imagePath}', '${outputPath}',` +
+        ` bytes(_mask_bytes), int(_mask_w), int(_mask_h)))`
+      ));
+      starsOk  = r.count >= 1;
+      solvedOk = false;
+      showImage(pyodide.FS.readFile(outputPath));
+      setStatus(r.message);
+    } catch (e) {
+      setStatus('Mask error: ' + e.message);
+      console.error(e);
+    }
+    busy = false;
+    setButtons({ load:true, detect:true, mask:starsOk, solve:starsOk, settings:true, achievements:true });
+  });
+}
 
 // ── save ──────────────────────────────────────────────────────────────────────
 btnSave.addEventListener('click', () => {
@@ -1241,8 +1443,8 @@ pano.add_image('/tmp/pano_in.jpg', _plate)
   }
   busy = false;
   setButtons({
-    camera: true, gallery: true,
-    detect: !!currentImageFile,
+    load: true,
+    detect: !!currentImageFile, mask: starsOk,
     solve: solvedOk, refine: solvedOk, save: solvedOk,
     settings: true, achievements: true,
   });
@@ -1292,8 +1494,8 @@ btnViewPano.addEventListener('click', async () => {
   }
   busy = false;
   setButtons({
-    camera: true, gallery: true,
-    detect: !!currentImageFile,
+    load: true,
+    detect: !!currentImageFile, mask: starsOk,
     solve: solvedOk, refine: solvedOk, save: solvedOk,
     settings: true, achievements: true,
   });
@@ -1320,8 +1522,8 @@ btnExportPano.addEventListener('click', async () => {
   }
   busy = false;
   setButtons({
-    camera: true, gallery: true,
-    detect: !!currentImageFile,
+    load: true,
+    detect: !!currentImageFile, mask: starsOk,
     solve: solvedOk, refine: solvedOk, save: solvedOk,
     settings: true, achievements: true,
   });
