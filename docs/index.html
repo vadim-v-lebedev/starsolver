@@ -189,17 +189,17 @@
     .ach-big   { font-size: 22px; font-weight: 700; color: #d8d8f0; }
     .ach-dim   { font-size: 14px; color: #6060a0; font-weight: 400; }
 
-    #achConsDetails { margin: 0; }
-    #achConsDetails > summary {
-      font-size: 12px; color: #6060a0; cursor: pointer;
-      padding: 8px 0 4px; user-select: none; list-style: none;
-    }
-    #achConsDetails > summary::before { content: '▶  '; }
-    #achConsDetails[open] > summary::before { content: '▼  '; }
-
     #achConsList {
-      display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 0 2px;
+      display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 0 6px;
     }
+
+    #btnResetAch {
+      margin-top: 8px; width: 100%; padding: 8px;
+      font-size: 12px; font-weight: 600;
+      background: #2a1a1a; color: #c06060;
+      border: none; border-radius: 6px; cursor: pointer;
+    }
+    #btnResetAch:active { background: #3a2020; }
     .cons-tag {
       font-size: 11px; padding: 2px 8px; border-radius: 10px;
       background: #14141f; color: #383860;
@@ -222,18 +222,16 @@
     <span class="ach-label">Images solved</span>
     <span class="ach-big" id="achImages">0</span>
   </div>
-  <div class="ach-row">
+  <div class="ach-row" style="border-bottom:none">
     <span class="ach-label">Constellations observed</span>
     <span class="ach-big"><span id="achConsCount">0</span><span class="ach-dim">/88</span></span>
   </div>
-  <details id="achConsDetails">
-    <summary>All constellations</summary>
-    <div id="achConsList"></div>
-  </details>
-  <div class="ach-row" style="border-bottom:none">
+  <div id="achConsList"></div>
+  <div class="ach-row" style="border-top:1px solid #1a1a30; border-bottom:none; margin-top:4px">
     <span class="ach-label">Faintest object</span>
     <span class="ach-big" id="achFaintest">—</span>
   </div>
+  <button id="btnResetAch">Reset all data</button>
 </div>
 
 <div id="settings-panel">
@@ -301,9 +299,10 @@
 let pyodide         = null;
 let pipeline        = null;
 let busy            = false;
-let imagePath       = '/tmp/input.jpg';
-let outputPath      = '/tmp/output.jpg';
-let currentBlobURL  = null;
+let imagePath        = '/tmp/input.jpg';
+let outputPath       = '/tmp/output.jpg';
+let currentBlobURL   = null;
+let currentImageFile = null;
 let solvedOk        = false;
 let detectThreshold = 20.0;
 
@@ -391,16 +390,21 @@ const CONS_ALL = [
 const ACH_KEY = 'starsolver_ach';
 
 function loadAch() {
-  try { return { images: 0, constellations: [], faintest: null,
+  try { return { images: 0, imageFiles: [], constellations: [], faintest: null,
                  ...JSON.parse(localStorage.getItem(ACH_KEY) || '{}') }; }
-  catch { return { images: 0, constellations: [], faintest: null }; }
+  catch { return { images: 0, imageFiles: [], constellations: [], faintest: null }; }
 }
 function saveAch(a) { localStorage.setItem(ACH_KEY, JSON.stringify(a)); }
 
-function updateAchievements({ constellations, faintest, countImage = false } = {}) {
+function updateAchievements({ constellations, faintest, imageFile } = {}) {
   const a = loadAch();
+  if (!a.imageFiles) a.imageFiles = [];
+
+  if (imageFile && !a.imageFiles.includes(imageFile)) {
+    a.imageFiles.push(imageFile);
+    a.images += 1;
+  }
   if (constellations && constellations.length) {
-    if (countImage) a.images += 1;
     const seen = new Set(a.constellations);
     constellations.forEach(c => seen.add(c));
     a.constellations = [...seen];
@@ -421,7 +425,7 @@ function renderAchievements() {
     a.faintest != null ? a.faintest.toFixed(1) + 'm' : '—';
 
   const list = document.getElementById('achConsList');
-  if (!list.children.length) {              // build once
+  if (!list.children.length) {
     CONS_ALL.forEach(name => {
       const span = document.createElement('span');
       span.className = 'cons-tag';
@@ -444,6 +448,12 @@ btnAchievements.addEventListener('click', () => {
   const isOpen = panel.classList.toggle('open');
   btnAchievements.classList.toggle('active', isOpen);
   if (isOpen) renderAchievements();
+});
+
+document.getElementById('btnResetAch').addEventListener('click', () => {
+  if (!confirm('Reset all achievements? This cannot be undone.')) return;
+  localStorage.removeItem(ACH_KEY);
+  renderAchievements();
 });
 
 // ── settings ──────────────────────────────────────────────────────────────────
@@ -624,6 +634,7 @@ async function onImageFile(file) {
   const buf = await file.arrayBuffer();
   pyodide.FS.writeFile(imagePath, new Uint8Array(buf));
   showImage(new Uint8Array(buf));
+  currentImageFile = file.name;
   solvedOk        = false;
   detectThreshold = 20.0;
   btnDetect.textContent = 'Detect';
@@ -699,7 +710,7 @@ btnSolve.addEventListener('click', async () => {
 
       showImage(pyodide.FS.readFile(outputPath));
       solvedOk = true;
-      updateAchievements({ constellations: cons ? cons.split(', ') : [], countImage: true });
+      updateAchievements({ constellations: cons ? cons.split(', ') : [], imageFile: currentImageFile });
       let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} matches  ${t}s`;
       if (cons) msg += `\n${cons}`;
       setStatus(msg);
@@ -746,7 +757,7 @@ btnRefine.addEventListener('click', async () => {
       r.destroy();
 
       showImage(pyodide.FS.readFile(outputPath));
-      updateAchievements({ constellations: cons ? cons.split(', ') : [], faintest: parseFloat(lim) });
+      updateAchievements({ constellations: cons ? cons.split(', ') : [], faintest: parseFloat(lim), imageFile: currentImageFile });
       const unkStr = unkn > 0 ? `  ${unkn} unidentified` : '';
       let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} id  lim=${lim}m  ${t}s${unkStr}`;
       if (cons) msg += `\n${cons}`;
