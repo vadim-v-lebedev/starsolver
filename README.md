@@ -2,6 +2,8 @@
 
 A Python library and a [web app](https://vadim-v-lebedev.github.io/starsolver/) designed for constellation identification on nighttime smartphone photos, by matching the light sources in the image to the stars in the Hipparcos catalogue (powered by [tetra3](https://github.com/esa/tetra3)). Basically this is the same thing that Stellarium does via accelerometer and compass data but done in a much more computationally complex way.
 
+![sample result](docs/images/sample_result.jpg)
+
 ## What it does
 
 - **Load** — pick your photo from the gallery.
