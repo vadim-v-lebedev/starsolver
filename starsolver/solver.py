@@ -38,15 +38,33 @@ def plate_solve(stars: List[Dict], image_width: int, image_height: int,
     centroids = np.array([[s['y'], s['x']] for s in top], dtype=np.float64)
 
     t3 = _get_tetra3(database_path)
-    result = t3.solve_from_centroids(
-        centroids,
-        size=(image_height, image_width),
-        fov_estimate=fov_estimate,
-        fov_max_error=fov_max_error,
-        pattern_checking_stars=len(top),
-        solve_timeout=solve_timeout,
-        return_matches=return_matches,
-    )
+
+    # Two-pass strategy:
+    #   Pass 1 — check only top-20 stars: C(20,4)=4,845 patterns, very fast (~0.5s).
+    #             Handles most clean dark-sky images quickly.
+    #   Pass 2 — if pass 1 fails, check all 50 stars: C(50,4)=230,300 patterns.
+    #             Needed for images with landscape contamination pushing real stars
+    #             past rank 20 (e.g. trees/lamp mixed with sky). Runs without a
+    #             per-pass timeout so the configured solve_timeout applies in full.
+    def _solve(pcs, timeout):
+        return t3.solve_from_centroids(
+            centroids,
+            size=(image_height, image_width),
+            fov_estimate=fov_estimate,
+            fov_max_error=fov_max_error,
+            pattern_checking_stars=pcs,
+            solve_timeout=timeout,
+            return_matches=return_matches,
+        )
+
+    # Pass 1: top-20 stars (4,845 patterns). Exits in <1 s when the pattern is
+    # absent; uses the full configured timeout when it is present (e.g. tent ~5s).
+    result = _solve(pcs=min(len(top), 20), timeout=solve_timeout)
+    if result.get('RA') is None:
+        # Pass 2: all 50 stars (230,300 patterns). Needed when real stars are
+        # pushed past rank 20 by landscape/light-pollution detections.
+        # Allow up to 30 s so images like purpledawn (~17 s) can still solve.
+        result = _solve(pcs=len(top), timeout=30000)
 
     if result.get('RA') is None:
         return None

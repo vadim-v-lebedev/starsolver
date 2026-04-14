@@ -83,10 +83,13 @@ class Pipeline:
             'count': len(self.stars),
         }
 
-    def solve(self, image_path: str, output_path: str) -> dict:
+    def solve(self, image_path: str, output_path: str,
+              timeout_override=None) -> dict:
         """
         Plate-solve the previously detected stars.
         Saves image with constellation lines and matched-star circles to output_path.
+
+        timeout_override: None = use config timeout; 0 = no timeout (unlimited).
 
         Returns dict with keys:
             status:  'solved' | 'no_solution' | 'too_few_stars'
@@ -98,8 +101,15 @@ class Pipeline:
         img = load_image(image_path)
         h, w = img.shape[:2]
 
+        if timeout_override == 0:
+            timeout = None          # unlimited
+        elif timeout_override is not None:
+            timeout = timeout_override
+        else:
+            timeout = self.config.solve.timeout_ms
+
         result = plate_solve(self.stars, w, h,
-                             solve_timeout=self.config.solve.timeout_ms,
+                             solve_timeout=timeout,
                              return_matches=True)
         if result is None:
             return {'status': 'no_solution'}

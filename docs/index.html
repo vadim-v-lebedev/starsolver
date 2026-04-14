@@ -92,6 +92,22 @@
       accent-color: #4466ff;
     }
 
+    .cfg-row input[type=checkbox] {
+      width: 18px; height: 18px;
+      accent-color: #4466ff;
+      cursor: pointer;
+    }
+
+    .cfg-row select {
+      flex: 2;
+      background: #1a1a30;
+      color: #9090b8;
+      border: 1px solid #2a2a50;
+      border-radius: 4px;
+      padding: 3px 4px;
+      font-size: 12px;
+    }
+
     .cfg-row input[type=color] {
       width: 32px;
       height: 24px;
@@ -166,6 +182,28 @@
     #btnSolve,  #btnRefine,  #btnSave   { grid-column: span 2; }
     #btnSettings, #btnAchievements      { grid-column: span 3; }
 
+    /* ── panorama viewer ───────────────────────────────────────────────────── */
+
+    #pano-viewer {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: #000;
+    }
+
+    #pano-canvas { width: 100%; height: 100%; display: block; }
+
+    #btnClosePano {
+      position: absolute;
+      top: 12px; right: 12px;
+      width: 40px; height: 40px;
+      border: none; border-radius: 50%;
+      background: rgba(0,0,0,0.5);
+      color: #fff; font-size: 18px;
+      cursor: pointer; touch-action: manipulation;
+    }
+
     /* ── achievements panel ────────────────────────────────────────────────── */
 
     #achievements-panel {
@@ -192,6 +230,36 @@
     #achConsList {
       display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 0 6px;
     }
+
+    .ach-img-list { margin: 4px 0 8px; }
+
+    .ach-img-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 0; border-bottom: 1px solid #12121e;
+    }
+    .ach-img-info { flex: 1; min-width: 0; }
+    .ach-img-name {
+      display: block; font-size: 12px; color: #c0c0e0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ach-img-coords { display: block; font-size: 10px; color: #505070; }
+
+    .ach-img-btn {
+      flex-shrink: 0; padding: 4px 10px;
+      font-size: 11px; font-weight: 600;
+      background: #1a1a30; color: #7080c0;
+      border: none; border-radius: 5px; cursor: pointer;
+    }
+    .ach-img-btn:active { background: #2a2a50; }
+
+    .ach-pano-btn {
+      width: 100%; margin-top: 6px; padding: 9px;
+      font-size: 13px; font-weight: 600;
+      background: #0f1f2f; color: #4090c0;
+      border: none; border-radius: 6px; cursor: pointer;
+    }
+    .ach-pano-btn:active  { background: #1a3040; }
+    .ach-pano-btn:disabled { opacity: 0.3; cursor: default; }
 
     #btnResetAch {
       margin-top: 8px; width: 100%; padding: 8px;
@@ -231,6 +299,14 @@
     <span class="ach-label">Faintest object</span>
     <span class="ach-big" id="achFaintest">—</span>
   </div>
+  <div class="ach-row" style="border-top:1px solid #1a1a30; border-bottom:none; margin-top:8px">
+    <span class="ach-label">Processed images</span>
+    <span class="ach-dim" id="achImageCount">0</span>
+  </div>
+  <div id="achImageList" class="ach-img-list"></div>
+  <button id="btnViewPano"   class="ach-pano-btn" disabled>View panorama</button>
+  <button id="btnExportPano" class="ach-pano-btn" disabled>Export panorama</button>
+  <button id="btnResetPano"  class="ach-pano-btn" style="color:#c06060">Reset panorama</button>
   <button id="btnResetAch">Reset all data</button>
 </div>
 
@@ -277,6 +353,20 @@
       <span class="cfg-val" id="cfgDetectionThicknessVal">5</span>
     </div>
   </div>
+  <div class="cfg-section">
+    <div class="cfg-row">
+      <label>Panorama grid</label>
+      <input type="checkbox" id="cfgPanoGrid" checked>
+    </div>
+    <div class="cfg-row">
+      <label>Constellations</label>
+      <select id="cfgPanoCons">
+        <option value="off">Off</option>
+        <option value="all">All</option>
+        <option value="observed">Observed only</option>
+      </select>
+    </div>
+  </div>
   <button id="btnResetSettings">Reset to defaults</button>
 </div>
 
@@ -294,16 +384,25 @@
 <input id="inputCamera"  type="file" accept="image/*" capture="environment" style="display:none">
 <input id="inputGallery" type="file" accept="image/*"                       style="display:none">
 
+<div id="pano-viewer">
+  <canvas id="pano-canvas"></canvas>
+  <button id="btnClosePano">✕</button>
+</div>
+
 <script>
 // ── state ─────────────────────────────────────────────────────────────────────
 let pyodide         = null;
 let pipeline        = null;
+let pano            = null;
 let busy            = false;
 let imagePath        = '/tmp/input.jpg';
 let outputPath       = '/tmp/output.jpg';
 let currentBlobURL   = null;
-let currentImageFile = null;
+let currentImageFile  = null;
+let currentImageBytes = null;
+const imageStore      = new Map();  // filename → { bytes, ra, dec, fov }
 let solvedOk        = false;
+let solveUnlimited  = false;
 let detectThreshold = 20.0;
 
 // ── DOM ───────────────────────────────────────────────────────────────────────
@@ -437,6 +536,26 @@ function renderAchievements() {
   list.querySelectorAll('.cons-tag').forEach(el => {
     el.classList.toggle('seen', seen.has(el.dataset.cons));
   });
+
+  // Processed images (session)
+  const imgList = document.getElementById('achImageList');
+  imgList.innerHTML = '';
+  document.getElementById('achImageCount').textContent = imageStore.size;
+  if (imageStore.size === 0) {
+    imgList.innerHTML = '<div style="font-size:11px;color:#404060;padding:4px 0">No images solved this session</div>';
+  } else {
+    imageStore.forEach((rec, name) => {
+      const row  = document.createElement('div');
+      row.className = 'ach-img-row';
+      row.innerHTML = `
+        <div class="ach-img-info">
+          <span class="ach-img-name">${name}</span>
+          <span class="ach-img-coords">RA ${rec.ra.toFixed(1)}°  Dec ${rec.dec.toFixed(1)}°  FOV ${rec.fov.toFixed(1)}°</span>
+        </div>
+        <button class="ach-img-btn" data-key="${name}">+ Pano</button>`;
+      imgList.appendChild(row);
+    });
+  }
 }
 
 const btnAchievements = document.getElementById('btnAchievements');
@@ -453,7 +572,17 @@ btnAchievements.addEventListener('click', () => {
 document.getElementById('btnResetAch').addEventListener('click', () => {
   if (!confirm('Reset all achievements? This cannot be undone.')) return;
   localStorage.removeItem(ACH_KEY);
+  imageStore.clear();
   renderAchievements();
+});
+
+document.getElementById('btnResetPano').addEventListener('click', () => {
+  if (!confirm('Clear the panorama? All added images will be removed.')) return;
+  pyodide.runPython('pano = Panorama()');
+  pano = pyodide.globals.get('pano');
+  btnViewPano.disabled   = true;
+  btnExportPano.disabled = true;
+  setStatus('Panorama reset.');
 });
 
 // ── settings ──────────────────────────────────────────────────────────────────
@@ -546,7 +675,22 @@ function initSettings() {
 
   document.getElementById('btnResetSettings').addEventListener('click', () => {
     localStorage.removeItem(SETTINGS_KEY);
+    localStorage.removeItem(PANO_KEY);
     applySettings({ ...DEFAULTS });
+    document.getElementById('cfgPanoGrid').checked = PANO_DEFAULTS.showGrid;
+    document.getElementById('cfgPanoCons').value   = PANO_DEFAULTS.constellations;
+  });
+
+  // Panorama config (takes effect on next View panorama)
+  const ps = loadPanoSettings();
+  document.getElementById('cfgPanoGrid').checked = ps.showGrid;
+  document.getElementById('cfgPanoCons').value   = ps.constellations;
+
+  document.getElementById('cfgPanoGrid').addEventListener('change', e => {
+    savePanoSettings({ ...loadPanoSettings(), showGrid: e.target.checked });
+  });
+  document.getElementById('cfgPanoCons').addEventListener('change', e => {
+    savePanoSettings({ ...loadPanoSettings(), constellations: e.target.value });
   });
 }
 
@@ -569,7 +713,8 @@ const CDN_SS  = _LOCAL
 const CDN_T3  = 'https://cdn.jsdelivr.net/gh/vadim-v-lebedev/tetra3@master/tetra3';
 
 const SS_FILES = ['pipeline.py','detector.py','solver.py','refine.py',
-                  'plate.py','draw.py','catalog.py','minicv.py','config.py'];
+                  'plate.py','draw.py','catalog.py','minicv.py','config.py',
+                  'panorama.py'];
 const T3_FILES = ['__init__.py','tetra3.py'];
 
 async function initPyodide() {
@@ -612,8 +757,12 @@ async function initPyodide() {
 import sys
 sys.path.insert(0, '/ss')
 from pipeline import Pipeline
+from panorama import Panorama
+pipeline = Pipeline()
+pano     = Panorama()
 `);
-    pipeline = pyodide.globals.get('Pipeline')();
+    pipeline = pyodide.globals.get('pipeline');
+    pano     = pyodide.globals.get('pano');
     initSettings();
 
     setProgress(100);
@@ -632,12 +781,15 @@ from pipeline import Pipeline
 // ── image loading ─────────────────────────────────────────────────────────────
 async function onImageFile(file) {
   const buf = await file.arrayBuffer();
-  pyodide.FS.writeFile(imagePath, new Uint8Array(buf));
-  showImage(new Uint8Array(buf));
+  currentImageBytes = new Uint8Array(buf);
+  pyodide.FS.writeFile(imagePath, currentImageBytes);
+  showImage(currentImageBytes);
   currentImageFile = file.name;
   solvedOk        = false;
+  solveUnlimited  = false;
   detectThreshold = 20.0;
   btnDetect.textContent = 'Detect';
+  btnSolve.textContent  = 'Solve';
   setButtons({ camera: true, gallery: true, detect: true, settings: true, achievements: true });
   setStatus('Image loaded. Tap Detect.');
 }
@@ -671,7 +823,9 @@ btnDetect.addEventListener('click', async () => {
     showImage(pyodide.FS.readFile(outputPath));
     detectThreshold = thr / 2;
     btnDetect.textContent = 'Detect more';
-    solvedOk = false;
+    solvedOk       = false;
+    solveUnlimited = false;
+    btnSolve.textContent = 'Solve';
 
     const hint = n < 4
       ? `\nToo few stars — tap Detect more (threshold=${detectThreshold.toFixed(0)})`
@@ -691,11 +845,13 @@ btnDetect.addEventListener('click', async () => {
 btnSolve.addEventListener('click', async () => {
   if (busy || !pipeline) return;
   setBusy(true);
-  setStatus('Solving…');
+  setStatus(solveUnlimited ? 'Solving (no timeout)…' : 'Solving…');
   await sleep(30);
 
   try {
-    const r      = pipeline.solve(imagePath, outputPath);
+    const r      = solveUnlimited
+      ? pipeline.solve(imagePath, outputPath, 0)
+      : pipeline.solve(imagePath, outputPath);
     const status = r.get('status').toString();
 
     if (status === 'solved') {
@@ -709,19 +865,35 @@ btnSolve.addEventListener('click', async () => {
       r.destroy();
 
       showImage(pyodide.FS.readFile(outputPath));
-      solvedOk = true;
+      solvedOk       = true;
+      solveUnlimited = false;
+      btnSolve.textContent = 'Solve';
       updateAchievements({ constellations: cons ? cons.split(', ') : [], imageFile: currentImageFile });
+      const plateDict = JSON.parse(pyodide.runPython('import json; json.dumps(pipeline.plate.to_dict())'));
+      imageStore.set(currentImageFile, {
+        bytes: currentImageBytes,
+        ra: parseFloat(ra), dec: parseFloat(dec), fov: parseFloat(fov),
+        plate: plateDict,
+      });
       let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} matches  ${t}s`;
       if (cons) msg += `\n${cons}`;
       setStatus(msg);
-      setButtons({ camera:true, gallery:true, detect:true, solve:true, refine:true, save:true, settings:true, achievements:true });
+      setButtons({ camera:true, gallery:true, detect:true, solve:true, refine:true, save:true, settings:true, achievements:true});
 
     } else {
       r.destroy();
       solvedOk = false;
-      setStatus(status === 'too_few_stars'
-        ? 'Too few stars for plate solving — try Detect ÷2.'
-        : 'No plate solution found.');
+      if (status === 'too_few_stars') {
+        solveUnlimited = false;
+        btnSolve.textContent = 'Solve';
+        setStatus('Too few stars for plate solving — try Detect ÷2.');
+      } else if (solveUnlimited) {
+        setStatus('No solution found even without time limit.');
+      } else {
+        solveUnlimited = true;
+        btnSolve.textContent = 'Solve ∞';
+        setStatus('No plate solution found — tap Solve ∞ to retry without timeout.');
+      }
       setButtons({ camera: true, gallery: true, detect: true, solve: true, settings: true, achievements: true });
     }
 
@@ -762,7 +934,7 @@ btnRefine.addEventListener('click', async () => {
       let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} id  lim=${lim}m  ${t}s${unkStr}`;
       if (cons) msg += `\n${cons}`;
       setStatus(msg);
-      setButtons({ camera:true, gallery:true, detect:true, solve:true, refine:true, save:true, settings:true, achievements:true });
+      setButtons({ camera:true, gallery:true, detect:true, solve:true, refine:true, save:true, settings:true, achievements:true});
 
     } else {
       r.destroy();
@@ -793,8 +965,329 @@ btnSave.addEventListener('click', () => {
   }
 });
 
+// ── panorama settings ─────────────────────────────────────────────────────────
+
+const PANO_KEY      = 'starsolver_pano';
+const PANO_DEFAULTS = { showGrid: true, constellations: 'off' };
+
+function loadPanoSettings() {
+  try { return { ...PANO_DEFAULTS, ...JSON.parse(localStorage.getItem(PANO_KEY) || '{}') }; }
+  catch { return { ...PANO_DEFAULTS }; }
+}
+function savePanoSettings(s) { localStorage.setItem(PANO_KEY, JSON.stringify(s)); }
+
+// ── panorama ──────────────────────────────────────────────────────────────────
+
+const btnViewPano   = document.getElementById('btnViewPano');
+const btnExportPano = document.getElementById('btnExportPano');
+const PANO_PATH     = '/tmp/panorama.jpg';
+
+function savePanoWithSettings() {
+  const ps = loadPanoSettings();
+  pyodide.globals.set('_pg', ps.showGrid);
+  pyodide.globals.set('_pm', ps.constellations);
+  if (ps.constellations === 'observed') {
+    pyodide.globals.set('_po', pyodide.toPy(loadAch().constellations));
+  } else {
+    pyodide.globals.set('_po', null);
+  }
+  pyodide.runPython(
+    `pano.save('${PANO_PATH}', show_grid=bool(_pg), cons_mode=str(_pm),` +
+    ` observed_names=list(_po) if _po is not None else None)`
+  );
+}
+
+let panoRenderer = null;
+let panoCamera   = null;
+let panoScene    = null;
+let panoThree    = null;   // cached Three.js module
+let panoGridObj  = null;   // THREE.LineSegments for coord grid
+let panoConsObj  = null;   // THREE.LineSegments for constellation lines
+let panoConsData = null;   // constellation segment data fetched from Python
+let panoAz       = 0;
+let panoEl       = 0;
+let panoFov      = 75;
+
+function renderPano() {
+  const el = panoEl * Math.PI / 180;
+  const az = panoAz * Math.PI / 180;
+  panoCamera.lookAt(
+    Math.cos(el) * Math.cos(az),
+    Math.sin(el),
+    Math.cos(el) * Math.sin(az)
+  );
+  panoRenderer.render(panoScene, panoCamera);
+}
+
+function resizePanoRenderer() {
+  const w = window.innerWidth, h = window.innerHeight;
+  panoRenderer.setSize(w, h);
+  panoCamera.aspect = w / h;
+  panoCamera.updateProjectionMatrix();
+  renderPano();
+}
+
+function initPanoDrag(canvas) {
+  let dragging = false, lx = 0, ly = 0;
+
+  canvas.addEventListener('mousedown', e => { dragging = true; lx = e.clientX; ly = e.clientY; });
+  window.addEventListener('mouseup',   () => { dragging = false; });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    panoAz -= (e.clientX - lx) * 0.3;
+    panoEl  = Math.max(-85, Math.min(85, panoEl - (e.clientY - ly) * 0.3));
+    lx = e.clientX; ly = e.clientY;
+    renderPano();
+  });
+
+  let lt = null;
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    lt = Array.from(e.touches).map(t => ({ x: t.clientX, y: t.clientY }));
+  }, { passive: false });
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const ct = Array.from(e.touches).map(t => ({ x: t.clientX, y: t.clientY }));
+    if (ct.length === 1 && lt && lt.length === 1) {
+      panoAz -= (ct[0].x - lt[0].x) * 0.3;
+      panoEl  = Math.max(-85, Math.min(85, panoEl - (ct[0].y - lt[0].y) * 0.3));
+    } else if (ct.length === 2 && lt && lt.length === 2) {
+      const d0 = Math.hypot(lt[0].x - lt[1].x, lt[0].y - lt[1].y);
+      const d1 = Math.hypot(ct[0].x - ct[1].x, ct[0].y - ct[1].y);
+      panoFov = Math.max(20, Math.min(120, panoFov * d0 / d1));
+      panoCamera.fov = panoFov;
+      panoCamera.updateProjectionMatrix();
+    }
+    lt = ct;
+    renderPano();
+  }, { passive: false });
+}
+
+function makeCoordGrid(THREE, radius) {
+  const pts = [];
+  const N   = 64;   // segments per latitude circle
+  const M   = 32;   // segments per meridian
+
+  // Dec parallels every 30° (skip poles)
+  for (const dec of [-60, -30, 0, 30, 60]) {
+    const d = dec * Math.PI / 180;
+    for (let i = 0; i < N; i++) {
+      const a0 = (i     / N) * 2 * Math.PI;
+      const a1 = ((i+1) / N) * 2 * Math.PI;
+      pts.push(
+        -Math.cos(d)*Math.cos(a0), Math.sin(d), Math.cos(d)*Math.sin(a0),
+        -Math.cos(d)*Math.cos(a1), Math.sin(d), Math.cos(d)*Math.sin(a1),
+      );
+    }
+  }
+
+  // RA meridians every 30°
+  for (let ra = 0; ra < 360; ra += 30) {
+    const r = ra * Math.PI / 180;
+    for (let j = 0; j < M; j++) {
+      const d0 = -Math.PI/2 + (j     / M) * Math.PI;
+      const d1 = -Math.PI/2 + ((j+1) / M) * Math.PI;
+      pts.push(
+        -Math.cos(d0)*Math.cos(r), Math.sin(d0), Math.cos(d0)*Math.sin(r),
+        -Math.cos(d1)*Math.cos(r), Math.sin(d1), Math.cos(d1)*Math.sin(r),
+      );
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  return new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0x223344 }));
+}
+
+function makeConsLines(THREE, radius, consData, filterNames) {
+  // filterNames: null = all constellations, Set = only those names
+  const pts = [];
+  for (const [name, segs] of Object.entries(consData)) {
+    if (filterNames && !filterNames.has(name)) continue;
+    for (const [ra1, dec1, ra2, dec2] of segs) {
+      const r1 = ra1 * Math.PI / 180, d1 = dec1 * Math.PI / 180;
+      const r2 = ra2 * Math.PI / 180, d2 = dec2 * Math.PI / 180;
+      pts.push(
+        -Math.cos(d1) * Math.cos(r1) * radius, Math.sin(d1) * radius, Math.cos(d1) * Math.sin(r1) * radius,
+        -Math.cos(d2) * Math.cos(r2) * radius, Math.sin(d2) * radius, Math.cos(d2) * Math.sin(r2) * radius,
+      );
+    }
+  }
+  if (!pts.length) return null;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  return new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0xaa7700 }));
+}
+
+async function openPanoViewer(data) {
+  document.getElementById('pano-viewer').style.display = 'block';
+
+  if (!panoThree) {
+    panoThree = await import('https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js');
+  }
+  const THREE = panoThree;
+
+  if (!panoRenderer) {
+    const canvas = document.getElementById('pano-canvas');
+    panoRenderer = new THREE.WebGLRenderer({ canvas, antialias: false });
+    panoRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    panoScene  = new THREE.Scene();
+    panoCamera = new THREE.PerspectiveCamera(panoFov, 1, 0.1, 200);
+    panoCamera.position.set(0, 0, 0);
+    panoScene.add(new THREE.Mesh(          // index 0: image sphere
+      new THREE.SphereGeometry(100, 64, 32),
+      new THREE.MeshBasicMaterial({ side: THREE.BackSide })
+    ));
+    initPanoDrag(canvas);
+    window.addEventListener('resize', resizePanoRenderer);
+  }
+
+  // Apply current panorama settings (runs on every open)
+  const ps = loadPanoSettings();
+
+  if (panoGridObj) { panoScene.remove(panoGridObj); panoGridObj = null; }
+  if (ps.showGrid) {
+    panoGridObj = makeCoordGrid(THREE, 99);
+    panoScene.add(panoGridObj);
+  }
+
+  if (panoConsObj) { panoScene.remove(panoConsObj); panoConsObj = null; }
+  if (ps.constellations !== 'off') {
+    if (!panoConsData) {
+      panoConsData = JSON.parse(pyodide.runPython(`
+import json
+from catalog import _LINES_RAW, _get_hip_coords, CONSTELLATIONS
+_hc = _get_hip_coords()
+_r = {}
+for _row in _LINES_RAW:
+    _abbr = _row[0]
+    _name = CONSTELLATIONS.get(_abbr, _abbr)
+    _segs = []
+    for _i in range(0, len(_row) - 3, 2):
+        _ha, _hb = _row[2 + _i], _row[3 + _i]
+        if _ha in _hc and _hb in _hc:
+            _segs.append([_hc[_ha][0], _hc[_ha][1], _hc[_hb][0], _hc[_hb][1]])
+    if _segs:
+        _r[_name] = _segs
+json.dumps(_r)
+`));
+    }
+    const filter = ps.constellations === 'observed'
+      ? new Set(loadAch().constellations)
+      : null;
+    panoConsObj = makeConsLines(THREE, 98, panoConsData, filter);
+    if (panoConsObj) panoScene.add(panoConsObj);
+  }
+
+  resizePanoRenderer();
+
+  const url = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
+  new THREE.TextureLoader().load(url, tex => {
+    panoScene.children[0].material.map = tex;
+    panoScene.children[0].material.needsUpdate = true;
+    URL.revokeObjectURL(url);
+    renderPano();
+  });
+}
+
+document.getElementById('btnClosePano').addEventListener('click', () => {
+  document.getElementById('pano-viewer').style.display = 'none';
+});
+
+// Per-image "Add to pano" — delegated from achImageList
+document.getElementById('achImageList').addEventListener('click', async e => {
+  const btn = e.target.closest('.ach-img-btn');
+  if (!btn || busy) return;
+  const key = btn.dataset.key;
+  const rec = imageStore.get(key);
+  if (!rec) return;
+
+  setBusy(true);
+  setStatus(`Adding ${key} to panorama…`);
+  await sleep(30);
+  try {
+    pyodide.FS.writeFile('/tmp/pano_in.jpg', rec.bytes);
+    pyodide.globals.set('_plate_dict', pyodide.toPy(rec.plate));
+    const pixels = pyodide.runPython(`
+from plate import Plate
+_plate = Plate.from_dict(dict(_plate_dict))
+pano.add_image('/tmp/pano_in.jpg', _plate)
+`);
+    btnViewPano.disabled   = false;
+    btnExportPano.disabled = false;
+    const n = pano.count;
+    setStatus(`Added ${key} to panorama — ${n} image${n !== 1 ? 's' : ''}`);
+  } catch (e) {
+    setStatus('Panorama error: ' + e.message);
+    console.error(e);
+  }
+  busy = false;
+  setButtons({
+    camera: true, gallery: true,
+    detect: !!currentImageFile,
+    solve: solvedOk, refine: solvedOk, save: solvedOk,
+    settings: true, achievements: true,
+  });
+});
+
+btnViewPano.addEventListener('click', async () => {
+  if (busy || !pano) return;
+  setBusy(true);
+  setStatus('Building panorama image…');
+  await sleep(30);
+  try {
+    // Save plain canvas — Three.js draws the grid/constellation overlay
+    // itself, so we must not bake them into the texture here or they double.
+    pyodide.runPython(`pano.save('${PANO_PATH}')`);
+    const data = pyodide.FS.readFile(PANO_PATH);
+    setStatus('');
+    await openPanoViewer(data);
+  } catch (e) {
+    setStatus('Panorama error: ' + e.message);
+    console.error(e);
+  }
+  busy = false;
+  setButtons({
+    camera: true, gallery: true,
+    detect: !!currentImageFile,
+    solve: solvedOk, refine: solvedOk, save: solvedOk,
+    settings: true, achievements: true,
+  });
+  btnViewPano.disabled   = false;
+  btnExportPano.disabled = false;
+});
+
+btnExportPano.addEventListener('click', async () => {
+  if (busy || !pano) return;
+  setBusy(true);
+  setStatus('Exporting panorama…');
+  await sleep(30);
+  try {
+    savePanoWithSettings();
+    const data = pyodide.FS.readFile(PANO_PATH);
+    const url  = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'panorama.jpg'; a.click();
+    URL.revokeObjectURL(url);
+    setStatus('Panorama exported.');
+  } catch (e) {
+    setStatus('Export error: ' + e.message);
+    console.error(e);
+  }
+  busy = false;
+  setButtons({
+    camera: true, gallery: true,
+    detect: !!currentImageFile,
+    solve: solvedOk, refine: solvedOk, save: solvedOk,
+    settings: true, achievements: true,
+  });
+  btnViewPano.disabled   = false;
+  btnExportPano.disabled = false;
+});
+
 // ── boot ──────────────────────────────────────────────────────────────────────
 initPyodide();
 </script>
+
 </body>
 </html>
