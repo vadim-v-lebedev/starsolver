@@ -63,6 +63,73 @@
       display: none;
     }
 
+    /* ── settings panel ────────────────────────────────────────────────────── */
+
+    #settings-panel {
+      display: none;
+      background: #0e0e1c;
+      border-bottom: 1px solid #1e1e38;
+      padding: 8px 12px;
+      overflow-y: auto;
+      max-height: 45vh;
+    }
+
+    #settings-panel.open { display: block; }
+
+    .cfg-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      font-size: 12px;
+      color: #9090b8;
+    }
+
+    .cfg-row label { flex: 1; }
+
+    .cfg-row input[type=range] {
+      flex: 2;
+      accent-color: #4466ff;
+    }
+
+    .cfg-row input[type=color] {
+      width: 32px;
+      height: 24px;
+      border: none;
+      border-radius: 4px;
+      padding: 2px;
+      cursor: pointer;
+      background: #1a1a30;
+    }
+
+    .cfg-val {
+      width: 20px;
+      text-align: right;
+      color: #6060a0;
+    }
+
+    .cfg-section {
+      border-top: 1px solid #1a1a30;
+      margin-top: 4px;
+      padding-top: 4px;
+    }
+
+    #btnResetSettings {
+      margin-top: 8px;
+      width: 100%;
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #2a1a1a;
+      color: #c06060;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #btnResetSettings:active { background: #3a2020; }
+
+    /* ── buttons ───────────────────────────────────────────────────────────── */
+
     #buttons {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -92,6 +159,52 @@
       background: #1e2d5a;
       color: #a0c0ff;
     }
+
+    /* 6-column grid so bottom two buttons share the last row equally */
+    #buttons { grid-template-columns: repeat(6, 1fr); }
+    #btnCamera, #btnGallery, #btnDetect,
+    #btnSolve,  #btnRefine,  #btnSave   { grid-column: span 2; }
+    #btnSettings, #btnAchievements      { grid-column: span 3; }
+
+    /* ── achievements panel ────────────────────────────────────────────────── */
+
+    #achievements-panel {
+      display: none;
+      background: #0e0e1c;
+      border-bottom: 1px solid #1e1e38;
+      padding: 12px;
+      overflow-y: auto;
+      max-height: 55vh;
+    }
+    #achievements-panel.open { display: block; }
+
+    .ach-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #1a1a30;
+    }
+    .ach-label { font-size: 13px; color: #9090b8; }
+    .ach-big   { font-size: 22px; font-weight: 700; color: #d8d8f0; }
+    .ach-dim   { font-size: 14px; color: #6060a0; font-weight: 400; }
+
+    #achConsDetails { margin: 0; }
+    #achConsDetails > summary {
+      font-size: 12px; color: #6060a0; cursor: pointer;
+      padding: 8px 0 4px; user-select: none; list-style: none;
+    }
+    #achConsDetails > summary::before { content: '▶  '; }
+    #achConsDetails[open] > summary::before { content: '▼  '; }
+
+    #achConsList {
+      display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 0 2px;
+    }
+    .cons-tag {
+      font-size: 11px; padding: 2px 8px; border-radius: 10px;
+      background: #14141f; color: #383860;
+    }
+    .cons-tag.seen { background: #0f1f0f; color: #50a050; }
   </style>
 </head>
 <body>
@@ -104,13 +217,80 @@
   <div id="progress-bar"></div>
 </div>
 
+<div id="achievements-panel">
+  <div class="ach-row">
+    <span class="ach-label">Images solved</span>
+    <span class="ach-big" id="achImages">0</span>
+  </div>
+  <div class="ach-row">
+    <span class="ach-label">Constellations observed</span>
+    <span class="ach-big"><span id="achConsCount">0</span><span class="ach-dim">/88</span></span>
+  </div>
+  <details id="achConsDetails">
+    <summary>All constellations</summary>
+    <div id="achConsList"></div>
+  </details>
+  <div class="ach-row" style="border-bottom:none">
+    <span class="ach-label">Faintest object</span>
+    <span class="ach-big" id="achFaintest">—</span>
+  </div>
+</div>
+
+<div id="settings-panel">
+  <div class="cfg-row">
+    <label>Star radius</label>
+    <input type="range" id="cfgStarRadius" min="10" max="50" value="25">
+    <span class="cfg-val" id="cfgStarRadiusVal">25</span>
+  </div>
+  <div class="cfg-section">
+    <div class="cfg-row">
+      <label>Constellation color</label>
+      <input type="color" id="cfgConstellationColor" value="#ffb400">
+    </div>
+    <div class="cfg-row">
+      <label>Constellation width</label>
+      <input type="range" id="cfgConstellationThickness" min="1" max="10" value="4">
+      <span class="cfg-val" id="cfgConstellationThicknessVal">4</span>
+    </div>
+  </div>
+  <div class="cfg-section">
+    <div class="cfg-row">
+      <label>Match color</label>
+      <input type="color" id="cfgMatchColor" value="#ffb400">
+    </div>
+    <div class="cfg-row">
+      <label>Unknown color</label>
+      <input type="color" id="cfgUnknownColor" value="#c83232">
+    </div>
+    <div class="cfg-row">
+      <label>Circle width</label>
+      <input type="range" id="cfgCircleThickness" min="1" max="8" value="2">
+      <span class="cfg-val" id="cfgCircleThicknessVal">2</span>
+    </div>
+  </div>
+  <div class="cfg-section">
+    <div class="cfg-row">
+      <label>Detection color</label>
+      <input type="color" id="cfgDetectionColor" value="#00ff00">
+    </div>
+    <div class="cfg-row">
+      <label>Detection width</label>
+      <input type="range" id="cfgDetectionThickness" min="1" max="10" value="5">
+      <span class="cfg-val" id="cfgDetectionThicknessVal">5</span>
+    </div>
+  </div>
+  <button id="btnResetSettings">Reset to defaults</button>
+</div>
+
 <div id="buttons">
-  <button id="btnCamera"  disabled>Camera</button>
-  <button id="btnGallery" disabled>Gallery</button>
-  <button id="btnDetect"  disabled>Detect</button>
-  <button id="btnSolve"   disabled>Solve</button>
-  <button id="btnRefine"  disabled>Refine</button>
-  <button id="btnSave"    disabled>Save</button>
+  <button id="btnCamera"   disabled>Camera</button>
+  <button id="btnGallery"  disabled>Gallery</button>
+  <button id="btnDetect"   disabled>Detect</button>
+  <button id="btnSolve"    disabled>Solve</button>
+  <button id="btnRefine"   disabled>Refine</button>
+  <button id="btnSave"     disabled>Save</button>
+  <button id="btnSettings"      disabled>Settings</button>
+  <button id="btnAchievements" disabled>Achievements</button>
 </div>
 
 <input id="inputCamera"  type="file" accept="image/*" capture="environment" style="display:none">
@@ -132,12 +312,13 @@ const elStatus   = document.getElementById('status');
 const elPreview  = document.getElementById('preview');
 const elHolder   = document.getElementById('placeholder');
 const elProgress = document.getElementById('progress-bar');
-const btnCamera  = document.getElementById('btnCamera');
-const btnGallery = document.getElementById('btnGallery');
-const btnDetect  = document.getElementById('btnDetect');
-const btnSolve   = document.getElementById('btnSolve');
-const btnRefine  = document.getElementById('btnRefine');
-const btnSave    = document.getElementById('btnSave');
+const btnCamera   = document.getElementById('btnCamera');
+const btnGallery  = document.getElementById('btnGallery');
+const btnDetect   = document.getElementById('btnDetect');
+const btnSolve    = document.getElementById('btnSolve');
+const btnRefine   = document.getElementById('btnRefine');
+const btnSave     = document.getElementById('btnSave');
+const btnSettings = document.getElementById('btnSettings');
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function setStatus(msg) { elStatus.textContent = msg; }
@@ -149,13 +330,16 @@ function setProgress(pct) {
 }
 
 function setButtons({ camera=false, gallery=false, detect=false,
-                      solve=false, refine=false, save=false } = {}) {
-  btnCamera.disabled  = !camera;
-  btnGallery.disabled = !gallery;
-  btnDetect.disabled  = !detect;
-  btnSolve.disabled   = !solve;
-  btnRefine.disabled  = !refine;
-  btnSave.disabled    = !save;
+                      solve=false, refine=false, save=false,
+                      settings=false, achievements=false } = {}) {
+  btnCamera.disabled        = !camera;
+  btnGallery.disabled       = !gallery;
+  btnDetect.disabled        = !detect;
+  btnSolve.disabled         = !solve;
+  btnRefine.disabled        = !refine;
+  btnSave.disabled          = !save;
+  btnSettings.disabled      = !settings;
+  btnAchievements.disabled  = !achievements;
   [btnDetect, btnSolve, btnRefine].forEach(b => b.classList.remove('active'));
 }
 
@@ -167,7 +351,7 @@ function setBusy(on) {
 function showImage(data) {
   if (currentBlobURL) URL.revokeObjectURL(currentBlobURL);
   currentBlobURL = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
-  elPreview.src          = currentBlobURL;
+  elPreview.src           = currentBlobURL;
   elPreview.style.display = 'block';
   elHolder.style.display  = 'none';
 }
@@ -186,6 +370,185 @@ async function fetchBinary(url) {
   return new Uint8Array(await r.arrayBuffer());
 }
 
+// ── achievements ──────────────────────────────────────────────────────────────
+
+const CONS_ALL = [
+  'Andromeda','Antlia','Apus','Aquarius','Aquila','Ara','Aries','Auriga',
+  'Boötes','Caelum','Camelopardalis','Cancer','Canes Venatici','Canis Major',
+  'Canis Minor','Capricornus','Carina','Cassiopeia','Centaurus','Cepheus',
+  'Cetus','Chamaeleon','Circinus','Columba','Coma Berenices','Corona Australis',
+  'Corona Borealis','Corvus','Crater','Crux','Cygnus','Delphinus','Dorado',
+  'Draco','Equuleus','Eridanus','Fornax','Gemini','Grus','Hercules',
+  'Horologium','Hydra','Hydrus','Indus','Lacerta','Leo','Leo Minor','Lepus',
+  'Libra','Lupus','Lynx','Lyra','Mensa','Microscopium','Monoceros','Musca',
+  'Norma','Octans','Ophiuchus','Orion','Pavo','Pegasus','Perseus','Phoenix',
+  'Pictor','Pisces','Piscis Austrinus','Puppis','Pyxis','Reticulum','Sagitta',
+  'Sagittarius','Scorpius','Sculptor','Scutum','Serpens','Sextans','Taurus',
+  'Telescopium','Triangulum','Triangulum Australe','Tucana','Ursa Major',
+  'Ursa Minor','Vela','Virgo','Volans','Vulpecula',
+];
+
+const ACH_KEY = 'starsolver_ach';
+
+function loadAch() {
+  try { return { images: 0, constellations: [], faintest: null,
+                 ...JSON.parse(localStorage.getItem(ACH_KEY) || '{}') }; }
+  catch { return { images: 0, constellations: [], faintest: null }; }
+}
+function saveAch(a) { localStorage.setItem(ACH_KEY, JSON.stringify(a)); }
+
+function updateAchievements({ constellations, faintest, countImage = false } = {}) {
+  const a = loadAch();
+  if (constellations && constellations.length) {
+    if (countImage) a.images += 1;
+    const seen = new Set(a.constellations);
+    constellations.forEach(c => seen.add(c));
+    a.constellations = [...seen];
+  }
+  if (faintest != null && (a.faintest === null || faintest > a.faintest)) {
+    a.faintest = faintest;
+  }
+  saveAch(a);
+}
+
+function renderAchievements() {
+  const a = loadAch();
+  const seen = new Set(a.constellations);
+
+  document.getElementById('achImages').textContent    = a.images;
+  document.getElementById('achConsCount').textContent = seen.size;
+  document.getElementById('achFaintest').textContent  =
+    a.faintest != null ? a.faintest.toFixed(1) + 'm' : '—';
+
+  const list = document.getElementById('achConsList');
+  if (!list.children.length) {              // build once
+    CONS_ALL.forEach(name => {
+      const span = document.createElement('span');
+      span.className = 'cons-tag';
+      span.dataset.cons = name;
+      span.textContent  = name;
+      list.appendChild(span);
+    });
+  }
+  list.querySelectorAll('.cons-tag').forEach(el => {
+    el.classList.toggle('seen', seen.has(el.dataset.cons));
+  });
+}
+
+const btnAchievements = document.getElementById('btnAchievements');
+btnAchievements.addEventListener('click', () => {
+  const panel    = document.getElementById('achievements-panel');
+  const settings = document.getElementById('settings-panel');
+  settings.classList.remove('open');
+  btnSettings.classList.remove('active');
+  const isOpen = panel.classList.toggle('open');
+  btnAchievements.classList.toggle('active', isOpen);
+  if (isOpen) renderAchievements();
+});
+
+// ── settings ──────────────────────────────────────────────────────────────────
+const SETTINGS_KEY = 'starsolver_draw';
+
+const DEFAULTS = {
+  starRadius:             25,
+  constellationColor:     '#ffb400',
+  constellationThickness: 4,
+  matchColor:             '#ffb400',
+  unknownColor:           '#c83232',
+  circleThickness:        2,
+  detectionColor:         '#00ff00',
+  detectionThickness:     5,
+};
+
+function hexToRgb(hex) {
+  return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+}
+function hexAsTuple(hex) {
+  const [r, g, b] = hexToRgb(hex);
+  return pyodide.runPython(`(${r}, ${g}, ${b})`);
+}
+
+function loadSettings() {
+  try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }
+  catch { return { ...DEFAULTS }; }
+}
+
+function saveSettings(s) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
+
+function applySettings(s) {
+  const d = pipeline.config.draw;
+
+  document.getElementById('cfgStarRadius').value              = s.starRadius;
+  document.getElementById('cfgStarRadiusVal').textContent     = s.starRadius;
+  d.star_radius = s.starRadius;
+
+  document.getElementById('cfgConstellationColor').value                  = s.constellationColor;
+  document.getElementById('cfgConstellationThickness').value              = s.constellationThickness;
+  document.getElementById('cfgConstellationThicknessVal').textContent     = s.constellationThickness;
+  d.constellation_color     = hexAsTuple(s.constellationColor);
+  d.constellation_thickness = s.constellationThickness;
+
+  document.getElementById('cfgMatchColor').value              = s.matchColor;
+  document.getElementById('cfgUnknownColor').value            = s.unknownColor;
+  document.getElementById('cfgCircleThickness').value         = s.circleThickness;
+  document.getElementById('cfgCircleThicknessVal').textContent = s.circleThickness;
+  d.match_color      = hexAsTuple(s.matchColor);
+  d.unknown_color    = hexAsTuple(s.unknownColor);
+  d.circle_thickness = s.circleThickness;
+
+  document.getElementById('cfgDetectionColor').value              = s.detectionColor;
+  document.getElementById('cfgDetectionThickness').value          = s.detectionThickness;
+  document.getElementById('cfgDetectionThicknessVal').textContent = s.detectionThickness;
+  d.detection_color     = hexAsTuple(s.detectionColor);
+  d.detection_thickness = s.detectionThickness;
+}
+
+function initSettings() {
+  applySettings(loadSettings());
+
+  function wireSlider(id, valId, key, apply) {
+    const el = document.getElementById(id);
+    const vl = document.getElementById(valId);
+    el.addEventListener('input', () => {
+      const v = parseInt(el.value);
+      vl.textContent = v;
+      apply(v);
+      const s = loadSettings(); s[key] = v; saveSettings(s);
+    });
+  }
+
+  function wireColor(id, key, apply) {
+    document.getElementById(id).addEventListener('input', e => {
+      apply(hexAsTuple(e.target.value));
+      const s = loadSettings(); s[key] = e.target.value; saveSettings(s);
+    });
+  }
+
+  wireSlider('cfgStarRadius',             'cfgStarRadiusVal',             'starRadius',             v => pipeline.config.draw.star_radius             = v);
+  wireSlider('cfgConstellationThickness', 'cfgConstellationThicknessVal', 'constellationThickness', v => pipeline.config.draw.constellation_thickness = v);
+  wireSlider('cfgCircleThickness',        'cfgCircleThicknessVal',        'circleThickness',        v => pipeline.config.draw.circle_thickness        = v);
+  wireSlider('cfgDetectionThickness',     'cfgDetectionThicknessVal',     'detectionThickness',     v => pipeline.config.draw.detection_thickness     = v);
+
+  wireColor('cfgConstellationColor', 'constellationColor', v => pipeline.config.draw.constellation_color = v);
+  wireColor('cfgMatchColor',         'matchColor',         v => pipeline.config.draw.match_color         = v);
+  wireColor('cfgUnknownColor',       'unknownColor',       v => pipeline.config.draw.unknown_color       = v);
+  wireColor('cfgDetectionColor',     'detectionColor',     v => pipeline.config.draw.detection_color     = v);
+
+  document.getElementById('btnResetSettings').addEventListener('click', () => {
+    localStorage.removeItem(SETTINGS_KEY);
+    applySettings({ ...DEFAULTS });
+  });
+}
+
+btnSettings.addEventListener('click', () => {
+  const panel = document.getElementById('settings-panel');
+  const ach   = document.getElementById('achievements-panel');
+  ach.classList.remove('open');
+  btnAchievements.classList.remove('active');
+  const isOpen = panel.classList.toggle('open');
+  btnSettings.classList.toggle('active', isOpen);
+});
+
 // ── Pyodide initialisation ────────────────────────────────────────────────────
 // When served from localhost, load Python source from the local repo instead
 // of CDN so that edits are reflected immediately without committing.
@@ -196,7 +559,7 @@ const CDN_SS  = _LOCAL
 const CDN_T3  = 'https://cdn.jsdelivr.net/gh/vadim-v-lebedev/tetra3@master/tetra3';
 
 const SS_FILES = ['pipeline.py','detector.py','solver.py','refine.py',
-                  'plate.py','draw.py','catalog.py','minicv.py'];
+                  'plate.py','draw.py','catalog.py','minicv.py','config.py'];
 const T3_FILES = ['__init__.py','tetra3.py'];
 
 async function initPyodide() {
@@ -215,8 +578,8 @@ async function initPyodide() {
     for (const f of SS_FILES) {
       pyodide.FS.writeFile(`/ss/${f}`, await fetchText(`${CDN_SS}/${f}`));
     }
-    const fontBytes = await fetchBinary(`${CDN_SS}/DejaVuSans.ttf`);
-    pyodide.FS.writeFile('/ss/DejaVuSans.ttf', fontBytes);
+    pyodide.FS.writeFile('/ss/DejaVuSans.ttf',
+                         await fetchBinary(`${CDN_SS}/DejaVuSans.ttf`));
 
     setStatus('Fetching tetra3…');
     pyodide.FS.mkdir('/ss/tetra3');
@@ -240,13 +603,14 @@ import sys
 sys.path.insert(0, '/ss')
 from pipeline import Pipeline
 `);
-    pipeline = pyodide.globals.get('Pipeline').new();
+    pipeline = pyodide.globals.get('Pipeline')();
+    initSettings();
 
     setProgress(100);
     await sleep(300);
     setProgress(null);
     setStatus('Ready — pick or take an image.');
-    setButtons({ camera: true, gallery: true });
+    setButtons({ camera: true, gallery: true, settings: true, achievements: true });
 
   } catch (e) {
     setProgress(null);
@@ -263,7 +627,7 @@ async function onImageFile(file) {
   solvedOk        = false;
   detectThreshold = 20.0;
   btnDetect.textContent = 'Detect';
-  setButtons({ camera: true, gallery: true, detect: true });
+  setButtons({ camera: true, gallery: true, detect: true, settings: true, achievements: true });
   setStatus('Image loaded. Tap Detect.');
 }
 
@@ -295,18 +659,18 @@ btnDetect.addEventListener('click', async () => {
 
     showImage(pyodide.FS.readFile(outputPath));
     detectThreshold = thr / 2;
-    btnDetect.textContent = 'Detect ÷2';
+    btnDetect.textContent = 'Detect more';
     solvedOk = false;
 
     const hint = n < 4
-      ? `\nToo few stars — tap Detect ÷2 (threshold=${detectThreshold.toFixed(0)})`
+      ? `\nToo few stars — tap Detect more (threshold=${detectThreshold.toFixed(0)})`
       : '';
     setStatus(`${msg} · threshold=${thr}${hint}`);
-    setButtons({ camera: true, gallery: true, detect: true, solve: n >= 4 });
+    setButtons({ camera: true, gallery: true, detect: true, solve: n >= 4, settings: true, achievements: true });
 
   } catch (e) {
     setStatus('Detect error: ' + e.message);
-    setButtons({ camera: true, gallery: true, detect: true });
+    setButtons({ camera: true, gallery: true, detect: true, settings: true, achievements: true });
     console.error(e);
   }
   busy = false;
@@ -335,10 +699,11 @@ btnSolve.addEventListener('click', async () => {
 
       showImage(pyodide.FS.readFile(outputPath));
       solvedOk = true;
+      updateAchievements({ constellations: cons ? cons.split(', ') : [], countImage: true });
       let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} matches  ${t}s`;
       if (cons) msg += `\n${cons}`;
       setStatus(msg);
-      setButtons({ camera:true, gallery:true, detect:true, solve:true, refine:true, save:true });
+      setButtons({ camera:true, gallery:true, detect:true, solve:true, refine:true, save:true, settings:true, achievements:true });
 
     } else {
       r.destroy();
@@ -346,12 +711,12 @@ btnSolve.addEventListener('click', async () => {
       setStatus(status === 'too_few_stars'
         ? 'Too few stars for plate solving — try Detect ÷2.'
         : 'No plate solution found.');
-      setButtons({ camera: true, gallery: true, detect: true, solve: true });
+      setButtons({ camera: true, gallery: true, detect: true, solve: true, settings: true, achievements: true });
     }
 
   } catch (e) {
     setStatus('Solve error: ' + e.message);
-    setButtons({ camera: true, gallery: true, detect: true, solve: true });
+    setButtons({ camera: true, gallery: true, detect: true, solve: true, settings: true, achievements: true });
     console.error(e);
   }
   busy = false;
@@ -381,21 +746,22 @@ btnRefine.addEventListener('click', async () => {
       r.destroy();
 
       showImage(pyodide.FS.readFile(outputPath));
+      updateAchievements({ constellations: cons ? cons.split(', ') : [], faintest: parseFloat(lim) });
       const unkStr = unkn > 0 ? `  ${unkn} unidentified` : '';
       let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} id  lim=${lim}m  ${t}s${unkStr}`;
       if (cons) msg += `\n${cons}`;
       setStatus(msg);
-      setButtons({ camera:true, gallery:true, detect:true, solve:true, refine:true, save:true });
+      setButtons({ camera:true, gallery:true, detect:true, solve:true, refine:true, save:true, settings:true, achievements:true });
 
     } else {
       r.destroy();
       setStatus('Refinement failed — try re-solving.');
-      setButtons({ camera:true, gallery:true, detect:true, solve:solvedOk, refine:solvedOk });
+      setButtons({ camera:true, gallery:true, detect:true, solve:solvedOk, refine:solvedOk, settings:true, achievements:true });
     }
 
   } catch (e) {
     setStatus('Refine error: ' + e.message);
-    setButtons({ camera:true, gallery:true, detect:true, solve:solvedOk, refine:solvedOk });
+    setButtons({ camera:true, gallery:true, detect:true, solve:solvedOk, refine:solvedOk, settings:true, achievements:true });
     console.error(e);
   }
   busy = false;

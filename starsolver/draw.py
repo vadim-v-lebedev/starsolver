@@ -180,14 +180,14 @@ def draw_star_names(img: np.ndarray, matched_stars, matched_centroids,
 
 def draw_detections(img: np.ndarray, stars: List[Dict],
                     color: tuple = (0, 255, 0), thickness: int = 5,
+                    star_radius: int = 25,
                     max_highlight: int = 50, max_draw: int = 2000) -> np.ndarray:
     """Draw circles around detected stars on img (in-place)."""
     h, w = img.shape[:2]
     subset = stars[:max_highlight]
 
     items = [(s['x'], s['y'], 1.0) for s in subset]
-    radius = 25
-    _draw_circles_with_alpha(img, items, color, radius, thickness)
+    _draw_circles_with_alpha(img, items, color, star_radius, thickness)
 
     if len(stars) < max_highlight:
         
@@ -197,7 +197,7 @@ def draw_detections(img: np.ndarray, stars: List[Dict],
 
         subset = stars[max_highlight:max_draw]
         items = [(s['x'], s['y'], 0.25) for s in subset]
-        _draw_circles_with_alpha(img, items, color, radius, thickness)
+        _draw_circles_with_alpha(img, items, color, star_radius, thickness)
 
         return img
 
@@ -235,8 +235,9 @@ def _draw_circles_with_alpha(img: np.ndarray, items, color, radius, thickness):
 
 
 def _draw_refine_labels(img: np.ndarray, matched_stars: list,
-                        star_radius: int = 25) -> None:
-    """Draw Bayer designations (gold, PIL for Greek support) next to matched stars."""
+                        star_radius: int = 25,
+                        color: Tuple = (255, 180, 0)) -> None:
+    """Draw Bayer designations next to matched stars."""
     named = [s for s in matched_stars if s['name']]
     if not named:
         return
@@ -258,14 +259,16 @@ def _draw_refine_labels(img: np.ndarray, matched_stars: list,
         if ty < 0:
             ty = py + offset
         a = _mag_alpha(star.get('mag', 3.0))
-        draw.text((tx, ty), name, font=font, fill=(255, 180, 0, int(255 * a)))
+        r, g, b = color[0], color[1], color[2]
+        draw.text((tx, ty), name, font=font, fill=(r, g, b, int(255 * a)))
 
     img[:] = np.array(pil_img)
 
 
 def _draw_unknown_labels(img: np.ndarray, unknowns: list,
                          plate: Plate, phot_b: float = 0.0,
-                         star_radius: int = 25) -> None:
+                         star_radius: int = 25,
+                         color: Tuple = (200, 50, 50)) -> None:
     """Label unknown detections with nearest catalog distance and mag diff."""
     if not unknowns:
         return
@@ -326,9 +329,9 @@ def _draw_unknown_labels(img: np.ndarray, unknowns: list,
         if ty < 0:
             ty = py + offset
 
-        draw.text((tx, ty), line1, font=font, fill=(200, 50, 50))
+        draw.text((tx, ty), line1, font=font, fill=color)
         if line2:
             ty2 = ty + (bbox1[3] - bbox1[1]) + 2
-            draw.text((tx, ty2), line2, font=font, fill=(200, 50, 50))
+            draw.text((tx, ty2), line2, font=font, fill=color)
 
     img[:] = np.array(pil_img)

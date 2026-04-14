@@ -16,16 +16,16 @@ from PIL import Image
 from detector import find_stars_multiscale as find_stars
 from solver import plate_solve
 from plate import Plate
+from config import Config
 from draw import (load_image, draw_detections, draw_constellations, draw_star_names,
                   _draw_circles_with_alpha, _mag_alpha,
                   _draw_refine_labels, _draw_unknown_labels)
 
-STAR_RADIUS = 25
-
 
 class Pipeline:
-    def __init__(self):
-        self.stars = []   # detected stars (list of dicts)
+    def __init__(self, config: Config = None):
+        self.config = config or Config()
+        self.stars = []    # detected stars (list of dicts)
         self.plate = None  # Plate object (set after successful solve)
 
     def detect(self, image_path: str, output_path: str,
@@ -39,7 +39,10 @@ class Pipeline:
         img  = load_image(image_path)
         gray = load_image(image_path, 'L')
         self.stars = find_stars(gray, ratio_threshold=ratio_threshold)
-        draw_detections(img, self.stars)
+        d = self.config.draw
+        draw_detections(img, self.stars,
+                        color=d.detection_color, thickness=d.detection_thickness,
+                        star_radius=d.star_radius, max_draw=d.max_draw)
         Image.fromarray(img).save(output_path)
 
         n = len(self.stars)
@@ -95,24 +98,31 @@ class Pipeline:
         img = load_image(image_path)
         h, w = img.shape[:2]
 
-        result = plate_solve(self.stars, w, h, solve_timeout=10000, return_matches=True)
+        result = plate_solve(self.stars, w, h,
+                             solve_timeout=self.config.solve.timeout_ms,
+                             return_matches=True)
         if result is None:
             return {'status': 'no_solution'}
 
         self.plate = Plate.from_dict(result)
+        d = self.config.draw
 
-        draw_constellations(img, self.plate, star_radius=STAR_RADIUS)
+        draw_constellations(img, self.plate,
+                            color=d.constellation_color,
+                            thickness=d.constellation_thickness,
+                            star_radius=d.star_radius)
         centroids = result.get('matched_centroids', [])
         if centroids:
             _draw_circles_with_alpha(
                 img,
                 [(float(yx[1]), float(yx[0]), 1.0) for yx in centroids],
-                color=(255, 180, 0), radius=STAR_RADIUS, thickness=2,
+                color=d.match_color, radius=d.star_radius, thickness=d.circle_thickness,
             )
         draw_star_names(img,
                         result.get('matched_stars', []),
                         result.get('matched_centroids', []),
-                        star_radius=STAR_RADIUS)
+                        star_radius=d.star_radius,
+                        color=d.match_color)
         Image.fromarray(img).save(output_path)
 
         return {
@@ -152,13 +162,17 @@ class Pipeline:
 
         refined_plate = Plate.from_dict(result)
         out_img = load_image(image_path)
+        d = self.config.draw
 
-        draw_constellations(out_img, refined_plate, star_radius=STAR_RADIUS)
+        draw_constellations(out_img, refined_plate,
+                            color=d.constellation_color,
+                            thickness=d.constellation_thickness,
+                            star_radius=d.star_radius)
         _draw_circles_with_alpha(
             out_img,
             [(int(round(s['x'])), int(round(s['y'])), _mag_alpha(s['mag']))
              for s in result['matched_stars']],
-            color=(255, 180, 0), radius=STAR_RADIUS, thickness=2,
+            color=d.match_color, radius=d.star_radius, thickness=d.circle_thickness,
         )
 
         unknowns = result['unknown_detections']
@@ -166,12 +180,14 @@ class Pipeline:
             _draw_circles_with_alpha(
                 out_img,
                 [(int(round(u['x'])), int(round(u['y'])), 1.0) for u in unknowns],
-                color=(200, 50, 50), radius=STAR_RADIUS, thickness=2,
+                color=d.unknown_color, radius=d.star_radius, thickness=d.circle_thickness,
             )
 
-        _draw_refine_labels(out_img, result['matched_stars'], STAR_RADIUS)
+        _draw_refine_labels(out_img, result['matched_stars'], d.star_radius,
+                            color=d.match_color)
         _draw_unknown_labels(out_img, unknowns, refined_plate,
-                             result.get('phot_b', 0.0), STAR_RADIUS)
+                             result.get('phot_b', 0.0), d.star_radius,
+                             color=d.unknown_color)
 
         Image.fromarray(out_img).save(output_path)
 
