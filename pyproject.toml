@@ -18,3 +18,9 @@ starsolver = "starsolver.pipeline:main"
 
 [tool.setuptools.package-data]
 starsolver = ["*.npz", "*.ttf"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

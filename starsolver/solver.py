@@ -38,14 +38,13 @@ def plate_solve(stars: List[Dict], image_width: int, image_height: int,
     centroids = np.array([[s['y'], s['x']] for s in top], dtype=np.float64)
 
     t3 = _get_tetra3(database_path)
-    effective_timeout = None if return_matches else solve_timeout
     result = t3.solve_from_centroids(
         centroids,
         size=(image_height, image_width),
         fov_estimate=fov_estimate,
         fov_max_error=fov_max_error,
         pattern_checking_stars=len(top),
-        solve_timeout=effective_timeout,
+        solve_timeout=solve_timeout,
         return_matches=return_matches,
     )
 

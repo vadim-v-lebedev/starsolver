@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Testing
+.pytest_cache/
+
+# Package build / install
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Editable install finder
+__editable__.*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
