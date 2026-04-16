@@ -129,11 +129,15 @@ def _draw_constellations(canvas: np.ndarray,
 
 
 class Panorama:
-    def __init__(self, width: int = 4096):
+    def __init__(self, width: int = 4096, blend: str = 'overwrite'):
         self.W      = width
         self.H      = width // 2
+        self.blend  = blend
         self.canvas = np.zeros((self.H, self.W, 3), dtype=np.uint8)
         self.count  = 0   # images added so far
+        if blend == 'average':
+            self._accum   = np.zeros((self.H, self.W, 3), dtype=np.float32)
+            self._weights = np.zeros((self.H, self.W),    dtype=np.float32)
 
     def add_image(self, image_path: str, plate: Plate,
                   strip_height: int = 256) -> int:
@@ -185,17 +189,21 @@ class Panorama:
             if not len(idx):
                 continue
 
-            sampled   = _sample_bilinear(img, px[idx], py[idx])
-            strip_w   = self.W
-            rows_out  = idx // strip_w
-            cols_out  = idx  % strip_w
-            self.canvas[y0 + rows_out, cols_out] = sampled
+            sampled  = _sample_bilinear(img, px[idx], py[idx])
+            strip_w  = self.W
+            rows_out = idx // strip_w
+            cols_out = idx  % strip_w
+            if self.blend == 'average':
+                self._accum  [y0 + rows_out, cols_out] += sampled.astype(np.float32)
+                self._weights[y0 + rows_out, cols_out] += 1.0
+            else:
+                self.canvas[y0 + rows_out, cols_out] = sampled
             total += len(idx)
 
         self.count += 1
         return total
 
-    def save(self, output_path: str, quality: int = 90,
+    def save(self, output_path: str, quality: int = 95,
              show_grid: bool = False,
              cons_mode: str = 'off',
              observed_names=None) -> None:
@@ -206,7 +214,13 @@ class Panorama:
         observed_names: iterable of constellation full-names used when
                         cons_mode='observed'
         """
-        canvas = self.canvas.copy()
+        if self.blend == 'average' and self.count > 0:
+            w      = np.maximum(self._weights[:, :, np.newaxis], 1.0)
+            filled = self._weights > 0
+            canvas = np.where(filled[:, :, np.newaxis],
+                              self._accum / w, 0).astype(np.uint8)
+        else:
+            canvas = self.canvas.copy()
 
         if show_grid:
             _draw_grid(canvas)

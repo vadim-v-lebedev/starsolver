@@ -424,6 +424,22 @@
         <option value="observed">Observed only</option>
       </select>
     </div>
+    <div class="cfg-row">
+      <label>Resolution</label>
+      <select id="cfgPanoRes">
+        <option value="2048">2048 × 1024</option>
+        <option value="4096">4096 × 2048</option>
+        <option value="8192">8192 × 4096</option>
+      </select>
+    </div>
+    <div class="cfg-row">
+      <label>Blending</label>
+      <select id="cfgPanoBlend">
+        <option value="overwrite">Overwrite</option>
+        <option value="average">Average</option>
+      </select>
+    </div>
+    <div style="font-size:10px;color:#556;padding:2px 0 4px">Resolution &amp; blending take effect after Reset panorama</div>
   </div>
   <button id="btnResetSettings">Reset to defaults</button>
 </div>
@@ -676,7 +692,8 @@ document.getElementById('btnResetAch').addEventListener('click', () => {
 
 document.getElementById('btnResetPano').addEventListener('click', () => {
   if (!confirm('Clear the panorama? All added images will be removed.')) return;
-  pyodide.runPython('pano = Panorama()');
+  const _ps = loadPanoSettings();
+  pyodide.runPython(`pano = Panorama(width=${_ps.resolution}, blend='${_ps.blend}')`);
   pano = pyodide.globals.get('pano');
   btnViewPano.disabled   = true;
   btnExportPano.disabled = true;
@@ -775,20 +792,30 @@ function initSettings() {
     localStorage.removeItem(SETTINGS_KEY);
     localStorage.removeItem(PANO_KEY);
     applySettings({ ...DEFAULTS });
-    document.getElementById('cfgPanoGrid').checked = PANO_DEFAULTS.showGrid;
-    document.getElementById('cfgPanoCons').value   = PANO_DEFAULTS.constellations;
+    document.getElementById('cfgPanoGrid').checked  = PANO_DEFAULTS.showGrid;
+    document.getElementById('cfgPanoCons').value    = PANO_DEFAULTS.constellations;
+    document.getElementById('cfgPanoRes').value     = PANO_DEFAULTS.resolution.toString();
+    document.getElementById('cfgPanoBlend').value   = PANO_DEFAULTS.blend;
   });
 
   // Panorama config (takes effect on next View panorama)
   const ps = loadPanoSettings();
-  document.getElementById('cfgPanoGrid').checked = ps.showGrid;
-  document.getElementById('cfgPanoCons').value   = ps.constellations;
+  document.getElementById('cfgPanoGrid').checked  = ps.showGrid;
+  document.getElementById('cfgPanoCons').value    = ps.constellations;
+  document.getElementById('cfgPanoRes').value     = ps.resolution.toString();
+  document.getElementById('cfgPanoBlend').value   = ps.blend;
 
   document.getElementById('cfgPanoGrid').addEventListener('change', e => {
     savePanoSettings({ ...loadPanoSettings(), showGrid: e.target.checked });
   });
   document.getElementById('cfgPanoCons').addEventListener('change', e => {
     savePanoSettings({ ...loadPanoSettings(), constellations: e.target.value });
+  });
+  document.getElementById('cfgPanoRes').addEventListener('change', e => {
+    savePanoSettings({ ...loadPanoSettings(), resolution: parseInt(e.target.value) });
+  });
+  document.getElementById('cfgPanoBlend').addEventListener('change', e => {
+    savePanoSettings({ ...loadPanoSettings(), blend: e.target.value });
   });
 }
 
@@ -851,13 +878,14 @@ async function initPyodide() {
 
     setProgress(90);
     setStatus('Initialising pipeline…');
+    const _initPs = loadPanoSettings();
     await pyodide.runPythonAsync(`
 import sys
 sys.path.insert(0, '/ss')
 from pipeline import Pipeline
 from panorama import Panorama
 pipeline = Pipeline()
-pano     = Panorama()
+pano     = Panorama(width=${_initPs.resolution}, blend='${_initPs.blend}')
 `);
     pipeline = pyodide.globals.get('pipeline');
     pano     = pyodide.globals.get('pano');
@@ -1194,7 +1222,7 @@ btnSave.addEventListener('click', () => {
 // ── panorama settings ─────────────────────────────────────────────────────────
 
 const PANO_KEY      = 'starsolver_pano';
-const PANO_DEFAULTS = { showGrid: true, constellations: 'off' };
+const PANO_DEFAULTS = { showGrid: true, constellations: 'off', resolution: 4096, blend: 'overwrite' };
 
 function loadPanoSettings() {
   try { return { ...PANO_DEFAULTS, ...JSON.parse(localStorage.getItem(PANO_KEY) || '{}') }; }

@@ -43,7 +43,7 @@ class Pipeline:
         draw_detections(img, self.stars,
                         color=d.detection_color, thickness=d.detection_thickness,
                         star_radius=d.star_radius, max_draw=d.max_draw)
-        Image.fromarray(img).save(output_path)
+        Image.fromarray(img).save(output_path, quality=95)
 
         n = len(self.stars)
         message = f'{n} stars detected · showing 2000' if n > 2000 else f'{n} stars detected'
@@ -76,7 +76,7 @@ class Pipeline:
         self.plate = None
         img = load_image(image_path)
         draw_detections(img, self.stars)
-        Image.fromarray(img).save(output_path)
+        Image.fromarray(img).save(output_path, quality=95)
         return {
             'removed': True,
             'message': 'Removed detection. %d stars remaining.' % len(self.stars),
@@ -114,7 +114,7 @@ class Pipeline:
         draw_detections(img, self.stars,
                         color=d.detection_color, thickness=d.detection_thickness,
                         star_radius=d.star_radius, max_draw=d.max_draw)
-        Image.fromarray(img).save(output_path)
+        Image.fromarray(img).save(output_path, quality=95)
 
         n = len(self.stars)
         msg = f'Removed {removed} detection{"s" if removed != 1 else ""}. {n} remaining.'
@@ -170,7 +170,7 @@ class Pipeline:
                         result.get('matched_centroids', []),
                         star_radius=d.star_radius,
                         color=d.match_color)
-        Image.fromarray(img).save(output_path)
+        Image.fromarray(img).save(output_path, quality=95)
 
         return {
             'status':         'solved',
@@ -236,7 +236,7 @@ class Pipeline:
                              result.get('phot_b', 0.0), d.star_radius,
                              color=d.unknown_color)
 
-        Image.fromarray(out_img).save(output_path)
+        Image.fromarray(out_img).save(output_path, quality=95)
 
         faintest_mag = max((s['mag'] for s in result['matched_stars']), default=0.0)
         return {
