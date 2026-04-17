@@ -357,6 +357,10 @@
     <span class="ach-label">Faintest object</span>
     <span class="ach-big" id="achFaintest">—</span>
   </div>
+  <div class="ach-row" style="border-top:1px solid #1a1a30; border-bottom:none; margin-top:4px">
+    <span class="ach-label">Observation timespan</span>
+    <span class="ach-big" id="achTimespan">—</span>
+  </div>
   <div class="ach-row" style="border-top:1px solid #1a1a30; border-bottom:none; margin-top:8px">
     <span class="ach-label">Processed images</span>
     <span class="ach-dim" id="achImageCount">0</span>
@@ -493,9 +497,10 @@ let currentBlobURL   = null;
 let currentImageFile  = null;
 let currentImageBytes = null;
 const imageStore      = new Map();  // filename → { bytes|null, ra, dec, fov, plate }
-let starsOk         = false;
-let solvedOk        = false;
-let solveUnlimited  = false;
+let starsOk              = false;
+let solvedOk             = false;
+let solveUnlimited       = false;
+let currentImageTimestamp = null;   // ISO string from EXIF, or null
 let detectThreshold = 20.0;
 
 // ── DOM ───────────────────────────────────────────────────────────────────────
@@ -593,7 +598,7 @@ const IMAGES_KEY = 'starsolver_images';
 function saveImageStore() {
   const data = [];
   imageStore.forEach((rec, filename) => {
-    data.push({ filename, ra: rec.ra, dec: rec.dec, fov: rec.fov, plate: rec.plate });
+    data.push({ filename, ra: rec.ra, dec: rec.dec, fov: rec.fov, plate: rec.plate, timestamp: rec.timestamp });
   });
   localStorage.setItem(IMAGES_KEY, JSON.stringify(data));
 }
@@ -601,9 +606,9 @@ function saveImageStore() {
 function loadImageStore() {
   try {
     const saved = JSON.parse(localStorage.getItem(IMAGES_KEY) || '[]');
-    saved.forEach(({ filename, ra, dec, fov, plate }) => {
+    saved.forEach(({ filename, ra, dec, fov, plate, timestamp }) => {
       if (!imageStore.has(filename))
-        imageStore.set(filename, { bytes: null, ra, dec, fov, plate });
+        imageStore.set(filename, { bytes: null, ra, dec, fov, plate, timestamp: timestamp || null });
     });
   } catch {}
 }
@@ -627,6 +632,21 @@ function updateAchievements({ constellations, faintest, imageFile } = {}) {
   saveAch(a);
 }
 
+function formatTimespan(ms) {
+  const s = ms / 1000;
+  if (s < 60)   return `${Math.round(s)}s`;
+  const m = s / 60;
+  if (m < 60)   return `${Math.round(m)}m`;
+  const h = m / 60;
+  if (h < 24)   return `${Math.round(h)}h`;
+  const d = h / 24;
+  if (d < 30)   return `${Math.round(d)} day${Math.round(d) !== 1 ? 's' : ''}`;
+  const mo = d / 30.44;
+  if (mo < 12)  return `${Math.round(mo)} month${Math.round(mo) !== 1 ? 's' : ''}`;
+  const yr = d / 365.25;
+  return `${yr.toFixed(1)} year${parseFloat(yr.toFixed(1)) !== 1.0 ? 's' : ''}`;
+}
+
 function renderAchievements() {
   const a = loadAch();
   const seen = new Set(a.constellations);
@@ -635,6 +655,17 @@ function renderAchievements() {
   document.getElementById('achConsCount').textContent = seen.size;
   document.getElementById('achFaintest').textContent  =
     a.faintest != null ? a.faintest.toFixed(1) + 'm' : '—';
+
+  const tms = [];
+  imageStore.forEach(rec => { if (rec.timestamp) tms.push(new Date(rec.timestamp).getTime()); });
+  let timespanText = 'Unknown';
+  if (tms.length >= 2) {
+    const span = Math.max(...tms) - Math.min(...tms);
+    timespanText = span === 0 ? '0s' : formatTimespan(span);
+  } else if (tms.length === 1) {
+    timespanText = '-';
+  }
+  document.getElementById('achTimespan').textContent = timespanText;
 
   const list = document.getElementById('achConsList');
   if (!list.children.length) {
@@ -911,15 +942,30 @@ async function onImageFile(file) {
   currentImageBytes = new Uint8Array(buf);
   pyodide.FS.writeFile(imagePath, currentImageBytes);
   showImage(currentImageBytes);
-  currentImageFile = file.name;
-  starsOk         = false;
-  solvedOk        = false;
-  solveUnlimited  = false;
+  currentImageFile      = file.name;
+  starsOk               = false;
+  solvedOk              = false;
+  solveUnlimited        = false;
+  currentImageTimestamp = null;
   detectThreshold = 20.0;
   btnDetect.textContent = 'Detect';
   btnSolve.textContent  = 'Solve';
   setButtons({ load: true, detect: true, settings: true, achievements: true });
   setStatus('Image loaded. Tap Detect.');
+
+  // Read EXIF DateTimeOriginal from sub-IFD; fall back to file.lastModified
+  try {
+    const ts = pyodide.runPython(`
+from PIL import Image as _PIL
+_sub = _PIL.open('${imagePath}').getexif().get_ifd(0x8769)
+_dt  = str(_sub.get(0x9003) or '')
+_tz  = str(_sub.get(0x9011) or '')
+(_dt[:4]+'-'+_dt[5:7]+'-'+_dt[8:10]+'T'+_dt[11:]+_tz) if len(_dt) >= 19 else ''
+`);
+    currentImageTimestamp = ts || (file.lastModified ? new Date(file.lastModified).toISOString() : null);
+  } catch {
+    currentImageTimestamp = file.lastModified ? new Date(file.lastModified).toISOString() : null;
+  }
 }
 
 document.getElementById('inputGallery').addEventListener('change', e => {
@@ -998,6 +1044,7 @@ btnSolve.addEventListener('click', async () => {
         bytes: currentImageBytes,
         ra: parseFloat(ra), dec: parseFloat(dec), fov: parseFloat(fov),
         plate: plateDict,
+        timestamp: currentImageTimestamp,
       });
       saveImageStore();
       let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} matches  ${t}s`;
