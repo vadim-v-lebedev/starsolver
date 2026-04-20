@@ -56,8 +56,8 @@ class Plate:
 
     @property
     def fov_deg(self) -> float:
-        """Horizontal field of view in degrees."""
-        return float(np.degrees(2.0 * np.arctan(self.w / (2.0 * self.f))))
+        """Field of view along the longest image dimension, in degrees."""
+        return float(np.degrees(2.0 * np.arctan(max(self.w, self.h) / (2.0 * self.f))))
 
     @property
     def radec_roll(self) -> Tuple[float, float, float]:
@@ -96,7 +96,7 @@ class Plate:
             k2 = float(d.get('k2', 0.0))
         else:
             fov = np.radians(d['FOV'])
-            f   = w / 2.0 / np.tan(fov / 2.0)
+            f   = max(w, h) / 2.0 / np.tan(fov / 2.0)
             cx  = w / 2.0
             cy  = h / 2.0
             k1  = 0.0

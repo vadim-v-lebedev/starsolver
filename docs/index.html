@@ -144,6 +144,39 @@
     }
     #btnResetSettings:active { background: #3a2020; }
 
+    /* ── fov row ───────────────────────────────────────────────────────────── */
+
+    #fov-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      background: #0e0e1c;
+      border-top: 1px solid #1e1e38;
+      font-size: 12px;
+      color: #9090b8;
+    }
+
+    #fovHintLabel {
+      display: flex; align-items: center; gap: 5px;
+      white-space: nowrap; cursor: pointer; user-select: none;
+    }
+    #fovHintEnabled { accent-color: #4466ff; width: 15px; height: 15px; cursor: pointer; }
+
+    #fovSlider {
+      flex: 1;
+      accent-color: #4466ff;
+    }
+
+    #fovSlider:disabled { opacity: 0.3; }
+
+    #fovVal {
+      width: 34px;
+      text-align: right;
+      color: #6060a0;
+      font-size: 12px;
+    }
+
     /* ── buttons ───────────────────────────────────────────────────────────── */
 
     #buttons {
@@ -448,6 +481,12 @@
   <button id="btnResetSettings">Reset to defaults</button>
 </div>
 
+<div id="fov-row">
+  <label id="fovHintLabel"><input type="checkbox" id="fovHintEnabled" checked> FOV</label>
+  <input type="range" id="fovSlider" min="20" max="130" value="76" disabled>
+  <span id="fovVal">—</span>
+</div>
+
 <div id="buttons">
   <button id="btnLoad"     disabled>Load</button>
   <button id="btnDetect"   disabled>Detect</button>
@@ -501,7 +540,8 @@ let starsOk              = false;
 let solvedOk             = false;
 let solveUnlimited       = false;
 let currentImageTimestamp = null;   // ISO string from EXIF, or null
-let detectThreshold = 20.0;
+let detectThreshold   = 20.0;
+let currentFovEstimate = null;  // long-axis FOV from EXIF, degrees, or null
 
 // ── DOM ───────────────────────────────────────────────────────────────────────
 const elStatus   = document.getElementById('status');
@@ -553,6 +593,33 @@ function showImage(data) {
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── FOV slider ────────────────────────────────────────────────────────────────
+const elFovSlider      = document.getElementById('fovSlider');
+const elFovVal         = document.getElementById('fovVal');
+const elFovHintEnabled = document.getElementById('fovHintEnabled');
+let   fovHintOn        = true;   // mirrors checkbox
+let   fovSliderActive  = false;  // true when image loaded and not yet solved
+
+elFovSlider.addEventListener('input', () => {
+  elFovVal.textContent = elFovSlider.value + '°';
+});
+
+elFovHintEnabled.addEventListener('change', () => {
+  fovHintOn = elFovHintEnabled.checked;
+  elFovSlider.disabled = !fovSliderActive || !fovHintOn;
+});
+
+function setFovSlider({ enabled, value = null }) {
+  fovSliderActive = enabled;
+  elFovSlider.disabled = !enabled || !fovHintOn;
+  if (value !== null) {
+    elFovSlider.value    = Math.round(value);
+    elFovVal.textContent = Math.round(value) + '°';
+  } else if (!enabled && elFovVal.textContent === '—') {
+    // keep '—' only while still in the pre-image state
+  }
+}
 
 async function fetchText(url) {
   const r = await fetch(url);
@@ -956,13 +1023,19 @@ async function onImageFile(file) {
   setButtons({ load: true, detect: true, settings: true, achievements: true });
   setStatus('Image loaded. Tap Detect.');
 
-  // Read EXIF DateTimeOriginal; fall back to file.lastModified
+  // Read EXIF (timestamp + FOV estimate); fall back to file.lastModified for timestamp
+  currentFovEstimate = null;
+  pyodide.runPython('pipeline.fov_hint = None');
   try {
-    const ts = pyodide.runPython(`pipeline.read_timestamp('${imagePath}') or ''`);
-    currentImageTimestamp = ts || (file.lastModified ? new Date(file.lastModified).toISOString() : null);
+    const exif = JSON.parse(pyodide.runPython(
+      `import json; json.dumps(pipeline.read_exif('${imagePath}'))`));
+    currentImageTimestamp = exif.timestamp ||
+      (file.lastModified ? new Date(file.lastModified).toISOString() : null);
+    currentFovEstimate = exif.fov_estimate;
   } catch {
     currentImageTimestamp = file.lastModified ? new Date(file.lastModified).toISOString() : null;
   }
+  setFovSlider({ enabled: true, value: currentFovEstimate });
 }
 
 document.getElementById('inputGallery').addEventListener('change', e => {
@@ -992,6 +1065,7 @@ btnDetect.addEventListener('click', async () => {
     solvedOk       = false;
     solveUnlimited = false;
     btnSolve.textContent = 'Solve';
+    setFovSlider({ enabled: true });
 
     const hint = n < 4
       ? `\nToo few stars — tap Detect more (threshold=${detectThreshold.toFixed(0)})`
@@ -1017,6 +1091,9 @@ btnSolve.addEventListener('click', async () => {
 
   try {
     pyodide.runPython(`pipeline.timestamp = ${JSON.stringify(currentImageTimestamp)}`);
+    pyodide.runPython(fovHintOn
+      ? `pipeline.fov_hint = ${parseFloat(elFovSlider.value)}`
+      : 'pipeline.fov_hint = False');
     const r      = solveUnlimited
       ? pipeline.solve(imagePath, outputPath, 0)
       : pipeline.solve(imagePath, outputPath);
@@ -1033,6 +1110,7 @@ btnSolve.addEventListener('click', async () => {
       r.destroy();
 
       showImage(pyodide.FS.readFile(outputPath));
+      setFovSlider({ enabled: false, value: parseFloat(fov) });
       solvedOk       = true;
       solveUnlimited = false;
       btnSolve.textContent = 'Solve';
@@ -1052,6 +1130,7 @@ btnSolve.addEventListener('click', async () => {
     } else {
       r.destroy();
       solvedOk = false;
+      setFovSlider({ enabled: true });
       if (status === 'too_few_stars') {
         solveUnlimited = false;
         btnSolve.textContent = 'Solve';

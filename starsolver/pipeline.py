@@ -24,25 +24,43 @@ from draw import (load_image, draw_detections, draw_constellations, draw_star_na
 
 class Pipeline:
     def __init__(self, config: Config = None):
-        self.config    = config or Config()
-        self.stars     = []    # detected stars (list of dicts)
-        self.plate     = None  # Plate object (set after successful solve)
-        self.timestamp = None  # ISO 8601 string from EXIF, or None
+        self.config       = config or Config()
+        self.stars        = []    # detected stars (list of dicts)
+        self.plate        = None  # Plate object (set after successful solve)
+        self.timestamp    = None  # ISO 8601 string from EXIF, or None
+        self.fov_hint     = None  # None=auto from EXIF; float=explicit (°, long axis); False=disabled
 
     @staticmethod
-    def read_timestamp(image_path: str):
-        """Read EXIF DateTimeOriginal from image. Returns ISO 8601 string or None."""
+    def read_exif(image_path: str) -> dict:
+        """Read EXIF metadata from image.
+
+        Returns dict with:
+          'timestamp'    — ISO 8601 string or None
+          'fov_estimate' — long-axis FOV in degrees derived from
+                           FocalLengthIn35mmFilm, or None if tag absent
+        """
+        result = {'timestamp': None, 'fov_estimate': None}
         try:
-            from PIL import Image as _PIL
-            sub = _PIL.open(image_path).getexif().get_ifd(0x8769)
-            dt  = str(sub.get(0x9003) or '')
-            if len(dt) < 19:
-                return None
-            tz  = str(sub.get(0x9011) or '')
-            iso = dt[:4] + '-' + dt[5:7] + '-' + dt[8:10] + 'T' + dt[11:]
-            return iso + tz if tz else iso
+            from PIL import Image as _PIL, ImageOps as _Ops
+            img  = _PIL.open(image_path)
+            exif = img.getexif()
+            sub  = exif.get_ifd(0x8769)
+
+            dt = str(sub.get(0x9003) or '')
+            if len(dt) >= 19:
+                tz  = str(sub.get(0x9011) or '')
+                iso = dt[:4] + '-' + dt[5:7] + '-' + dt[8:10] + 'T' + dt[11:]
+                result['timestamp'] = iso + tz if tz else iso
+
+            f35 = sub.get(0xA405)
+            if f35 and f35 > 0:
+                import numpy as np
+                # 36 mm is the long side of a 35 mm frame → always gives long-axis FOV
+                result['fov_estimate'] = float(
+                    np.degrees(2.0 * np.arctan(36.0 / (2.0 * float(f35)))))
         except Exception:
-            return None
+            pass
+        return result
 
     def detect(self, image_path: str, output_path: str,
                ratio_threshold: float = 20.0) -> dict:
@@ -161,7 +179,22 @@ class Pipeline:
         else:
             timeout = self.config.solve.timeout_ms
 
+        fov_estimate = fov_max_error = None
+        if self.fov_hint is not False:
+            fov_long = None
+            if self.fov_hint is not None:
+                fov_long = float(self.fov_hint)
+            else:
+                fov_long = self.read_exif(image_path).get('fov_estimate')
+            if fov_long is not None:
+                import numpy as _np
+                f_est        = max(w, h) / (2.0 * _np.tan(_np.radians(fov_long) / 2.0))
+                fov_estimate = float(_np.degrees(2.0 * _np.arctan(w / (2.0 * f_est))))
+                fov_max_error = 10.0
+
         result = plate_solve(self.stars, w, h,
+                             fov_estimate=fov_estimate,
+                             fov_max_error=fov_max_error,
                              solve_timeout=timeout,
                              return_matches=True)
         if result is None:
@@ -280,12 +313,16 @@ def main():
     ap.add_argument('-o', '--output', help='output path (default: <stem>_solved.<ext>)')
     ap.add_argument('-t', '--threshold', type=float, default=20.0,
                     help='detection variance-ratio threshold (default: 20)')
+    ap.add_argument('-f', '--fov', type=float, default=None,
+                    help='long-axis FOV hint in degrees (auto-read from EXIF if omitted)')
     args = ap.parse_args()
 
     stem, ext = os.path.splitext(args.image)
     out = args.output or f'{stem}_solved{ext}'
 
     pipe = Pipeline()
+    if args.fov is not None:
+        pipe.fov_hint = args.fov
 
     r = pipe.detect(args.image, out, args.threshold)
     print(r['message'])
