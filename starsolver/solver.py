@@ -70,7 +70,7 @@ def plate_solve(stars: List[Dict], image_width: int, image_height: int,
         return None
 
     fov = float(result['FOV'])
-    if fov < 30 or fov > 100:
+    if fov < 10 or fov > 130:
         return None
 
     out = {
