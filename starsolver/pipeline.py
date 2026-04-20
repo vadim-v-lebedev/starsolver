@@ -24,9 +24,25 @@ from draw import (load_image, draw_detections, draw_constellations, draw_star_na
 
 class Pipeline:
     def __init__(self, config: Config = None):
-        self.config = config or Config()
-        self.stars = []    # detected stars (list of dicts)
-        self.plate = None  # Plate object (set after successful solve)
+        self.config    = config or Config()
+        self.stars     = []    # detected stars (list of dicts)
+        self.plate     = None  # Plate object (set after successful solve)
+        self.timestamp = None  # ISO 8601 string from EXIF, or None
+
+    @staticmethod
+    def read_timestamp(image_path: str):
+        """Read EXIF DateTimeOriginal from image. Returns ISO 8601 string or None."""
+        try:
+            from PIL import Image as _PIL
+            sub = _PIL.open(image_path).getexif().get_ifd(0x8769)
+            dt  = str(sub.get(0x9003) or '')
+            if len(dt) < 19:
+                return None
+            tz  = str(sub.get(0x9011) or '')
+            iso = dt[:4] + '-' + dt[5:7] + '-' + dt[8:10] + 'T' + dt[11:]
+            return iso + tz if tz else iso
+        except Exception:
+            return None
 
     def detect(self, image_path: str, output_path: str,
                ratio_threshold: float = 20.0) -> dict:
@@ -152,6 +168,7 @@ class Pipeline:
             return {'status': 'no_solution'}
 
         self.plate = Plate.from_dict(result)
+        self.plate.timestamp = self.timestamp
         d = self.config.draw
 
         draw_constellations(img, self.plate,
@@ -208,6 +225,7 @@ class Pipeline:
             return {'status': 'failed'}
 
         refined_plate = Plate.from_dict(result)
+        refined_plate.timestamp = self.timestamp
         out_img = load_image(image_path)
         d = self.config.draw
 

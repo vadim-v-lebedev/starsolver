@@ -598,7 +598,7 @@ const IMAGES_KEY = 'starsolver_images';
 function saveImageStore() {
   const data = [];
   imageStore.forEach((rec, filename) => {
-    data.push({ filename, ra: rec.ra, dec: rec.dec, fov: rec.fov, plate: rec.plate, timestamp: rec.timestamp });
+    data.push({ filename, ra: rec.ra, dec: rec.dec, fov: rec.fov, plate: rec.plate });
   });
   localStorage.setItem(IMAGES_KEY, JSON.stringify(data));
 }
@@ -606,9 +606,9 @@ function saveImageStore() {
 function loadImageStore() {
   try {
     const saved = JSON.parse(localStorage.getItem(IMAGES_KEY) || '[]');
-    saved.forEach(({ filename, ra, dec, fov, plate, timestamp }) => {
+    saved.forEach(({ filename, ra, dec, fov, plate }) => {
       if (!imageStore.has(filename))
-        imageStore.set(filename, { bytes: null, ra, dec, fov, plate, timestamp: timestamp || null });
+        imageStore.set(filename, { bytes: null, ra, dec, fov, plate });
     });
   } catch {}
 }
@@ -657,7 +657,10 @@ function renderAchievements() {
     a.faintest != null ? a.faintest.toFixed(1) + 'm' : '—';
 
   const tms = [];
-  imageStore.forEach(rec => { if (rec.timestamp) tms.push(new Date(rec.timestamp).getTime()); });
+  imageStore.forEach(rec => {
+    const ts = rec.plate && rec.plate.timestamp;
+    if (ts) tms.push(new Date(ts).getTime());
+  });
   let timespanText = 'Unknown';
   if (tms.length >= 2) {
     const span = Math.max(...tms) - Math.min(...tms);
@@ -953,15 +956,9 @@ async function onImageFile(file) {
   setButtons({ load: true, detect: true, settings: true, achievements: true });
   setStatus('Image loaded. Tap Detect.');
 
-  // Read EXIF DateTimeOriginal from sub-IFD; fall back to file.lastModified
+  // Read EXIF DateTimeOriginal; fall back to file.lastModified
   try {
-    const ts = pyodide.runPython(`
-from PIL import Image as _PIL
-_sub = _PIL.open('${imagePath}').getexif().get_ifd(0x8769)
-_dt  = str(_sub.get(0x9003) or '')
-_tz  = str(_sub.get(0x9011) or '')
-(_dt[:4]+'-'+_dt[5:7]+'-'+_dt[8:10]+'T'+_dt[11:]+_tz) if len(_dt) >= 19 else ''
-`);
+    const ts = pyodide.runPython(`pipeline.read_timestamp('${imagePath}') or ''`);
     currentImageTimestamp = ts || (file.lastModified ? new Date(file.lastModified).toISOString() : null);
   } catch {
     currentImageTimestamp = file.lastModified ? new Date(file.lastModified).toISOString() : null;
@@ -1019,6 +1016,7 @@ btnSolve.addEventListener('click', async () => {
   await sleep(30);
 
   try {
+    pyodide.runPython(`pipeline.timestamp = ${JSON.stringify(currentImageTimestamp)}`);
     const r      = solveUnlimited
       ? pipeline.solve(imagePath, outputPath, 0)
       : pipeline.solve(imagePath, outputPath);
@@ -1044,7 +1042,6 @@ btnSolve.addEventListener('click', async () => {
         bytes: currentImageBytes,
         ra: parseFloat(ra), dec: parseFloat(dec), fov: parseFloat(fov),
         plate: plateDict,
-        timestamp: currentImageTimestamp,
       });
       saveImageStore();
       let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} matches  ${t}s`;

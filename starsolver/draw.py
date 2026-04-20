@@ -100,27 +100,15 @@ def draw_catalog_stars(img: np.ndarray, plate: Plate,
     """Overlay Hipparcos catalog stars (mag <= mag_limit) on img."""
     h, w = img.shape[:2]
     ra_rad, dec_rad, mag, _ = _get_hip_catalog(catalog_path)
-    R  = plate.R
-    f  = plate.f;  cx = plate.cx;  cy = plate.cy
-    k1 = plate.k1; k2 = plate.k2
-
     v_cel = np.column_stack([np.cos(dec_rad) * np.cos(ra_rad),
                              np.cos(dec_rad) * np.sin(ra_rad),
                              np.sin(dec_rad)])
-    v_cam = (R @ v_cel.T).T
-    in_front = v_cam[:, 0] > 0
-    v_cam = v_cam[in_front]
-    mag_f = mag[in_front]
-
-    xn = -v_cam[:, 1] / v_cam[:, 0]
-    yn = -v_cam[:, 2] / v_cam[:, 0]
-    r2 = xn**2 + yn**2
-    d  = 1.0 + k1 * r2 + k2 * r2 ** 2
-    px = f * xn * d + cx
-    py = f * yn * d + cy
+    px, py, in_front = plate.project_with_mask(v_cel)
+    mag_f = mag
 
     margin = 50
-    visible = ((px >= -margin) & (px < w + margin) &
+    visible = (in_front &
+               (px >= -margin) & (px < w + margin) &
                (py >= -margin) & (py < h + margin) &
                (mag_f <= mag_limit))
 
@@ -276,25 +264,14 @@ def _draw_unknown_labels(img: np.ndarray, unknowns: list,
     h, w = img.shape[:2]
 
     ra_rad, dec_rad, mag_cat, _ = _get_hip_catalog()
-    f  = plate.f;  cx = plate.cx;  cy = plate.cy
-    k1 = plate.k1; k2 = plate.k2
-
-    R = plate.R
     v_cel = np.column_stack([np.cos(dec_rad) * np.cos(ra_rad),
                              np.cos(dec_rad) * np.sin(ra_rad),
                              np.sin(dec_rad)])
-    v_cam = (R @ v_cel.T).T
-    in_front = v_cam[:, 0] > 0
-    safe_d = np.where(in_front, v_cam[:, 0], 1.0)
-    xn = np.where(in_front, -v_cam[:, 1] / safe_d, 0.0)
-    yn = np.where(in_front, -v_cam[:, 2] / safe_d, 0.0)
-    r2 = xn ** 2 + yn ** 2
-    d  = 1.0 + k1 * r2 + k2 * r2 ** 2
-    cat_px = f * xn * d + cx
-    cat_py = f * yn * d + cy
+    cat_px, cat_py, in_front = plate.project_with_mask(v_cel)
     margin = 100
-    vis = in_front & (cat_px >= -margin) & (cat_px < w + margin) & \
-                     (cat_py >= -margin) & (cat_py < h + margin)
+    vis = (in_front &
+           (cat_px >= -margin) & (cat_px < w + margin) &
+           (cat_py >= -margin) & (cat_py < h + margin))
     vis_px  = cat_px[vis]
     vis_py  = cat_py[vis]
     vis_mag = mag_cat[vis]

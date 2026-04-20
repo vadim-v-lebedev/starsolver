@@ -148,9 +148,6 @@ class Panorama:
         """
         img = load_image(image_path)
         ih, iw = img.shape[:2]
-        R  = plate.R
-        f  = plate.f;  cx = plate.cx;  cy = plate.cy
-        k1 = plate.k1; k2 = plate.k2
         total = 0
 
         col = np.arange(self.W, dtype=np.float32)
@@ -170,16 +167,7 @@ class Panorama:
             sr = np.sin(ra_rad)
             v_cel = np.column_stack([cd * cr, cd * sr, sd])   # (N, 3)
 
-            v_cam = (R @ v_cel.T).T                            # (N, 3)
-
-            in_front = v_cam[:, 0] > 0
-            safe = np.where(in_front, v_cam[:, 0], 1.0)
-            xn = np.where(in_front, -v_cam[:, 1] / safe, 0.0)
-            yn = np.where(in_front, -v_cam[:, 2] / safe, 0.0)
-            r2 = xn ** 2 + yn ** 2
-            d  = 1.0 + k1 * r2 + k2 * r2 ** 2
-            px = f * xn * d + cx
-            py = f * yn * d + cy
+            px, py, in_front = plate.project_with_mask(v_cel)
 
             valid = (in_front &
                      (px >= 0.5) & (px < iw - 0.5) &

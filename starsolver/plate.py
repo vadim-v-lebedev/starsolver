@@ -34,18 +34,20 @@ def _build_rotation_matrix(ra_c: float, dec_c: float, roll: float) -> np.ndarray
 class Plate:
     """Camera plate solution: rotation + intrinsics + image dimensions."""
 
-    __slots__ = ('rvec', 'f', 'cx', 'cy', 'k1', 'k2', 'w', 'h')
+    __slots__ = ('rvec', 'f', 'cx', 'cy', 'k1', 'k2', 'w', 'h', 'timestamp')
 
     def __init__(self, rvec, f: float, cx: float, cy: float,
-                 k1: float, k2: float, w: int, h: int):
-        self.rvec = np.asarray(rvec, dtype=np.float64).ravel()
-        self.f    = float(f)
-        self.cx   = float(cx)
-        self.cy   = float(cy)
-        self.k1   = float(k1)
-        self.k2   = float(k2)
-        self.w    = int(w)
-        self.h    = int(h)
+                 k1: float, k2: float, w: int, h: int,
+                 timestamp: Optional[str] = None):
+        self.rvec      = np.asarray(rvec, dtype=np.float64).ravel()
+        self.f         = float(f)
+        self.cx        = float(cx)
+        self.cy        = float(cy)
+        self.k1        = float(k1)
+        self.k2        = float(k2)
+        self.w         = int(w)
+        self.h         = int(h)
+        self.timestamp = timestamp  # ISO 8601 string or None
 
     @property
     def R(self) -> np.ndarray:
@@ -99,7 +101,24 @@ class Plate:
             cy  = h / 2.0
             k1  = 0.0
             k2  = 0.0
-        return cls(rvec, f, cx, cy, k1, k2, w, h)
+        return cls(rvec, f, cx, cy, k1, k2, w, h,
+                   timestamp=d.get('timestamp'))
+
+    def project_with_mask(self, v_cel: np.ndarray):
+        """Project (N,3) celestial unit vectors to pixel coordinates with validity mask.
+
+        Returns (px, py, valid) where valid[i] is True when the vector is in
+        front of the camera.  px/py are defined for all i but meaningful only
+        where valid is True.
+        """
+        v_cam    = (self.R @ v_cel.T).T
+        in_front = v_cam[:, 0] > 0
+        safe     = np.where(in_front, v_cam[:, 0], 1.0)
+        xn       = np.where(in_front, -v_cam[:, 1] / safe, 0.0)
+        yn       = np.where(in_front, -v_cam[:, 2] / safe, 0.0)
+        r2       = xn ** 2 + yn ** 2
+        d        = 1.0 + self.k1 * r2 + self.k2 * r2 ** 2
+        return self.f * xn * d + self.cx, self.f * yn * d + self.cy, in_front
 
     def project(self, v_cel: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """Project celestial unit vectors to pixel (px, py) arrays."""
@@ -124,10 +143,21 @@ class Plate:
         px, py = self.project(v_cel)
         return int(round(float(px[0]))), int(round(float(py[0])))
 
+    @property
+    def datetime(self):
+        """Parse timestamp to a datetime object, or None if absent/invalid."""
+        if not self.timestamp:
+            return None
+        from datetime import datetime
+        try:
+            return datetime.fromisoformat(self.timestamp)
+        except (ValueError, TypeError):
+            return None
+
     def to_dict(self) -> Dict:
         """Serialise to a dict compatible with from_dict."""
         ra_deg, dec_deg, roll_deg = self.radec_roll
-        return {
+        d = {
             'RA':   round(ra_deg,   4),
             'Dec':  round(dec_deg,  4),
             'Roll': round(roll_deg, 4),
@@ -140,3 +170,6 @@ class Plate:
             'w':    self.w,
             'h':    self.h,
         }
+        if self.timestamp:
+            d['timestamp'] = self.timestamp
+        return d
