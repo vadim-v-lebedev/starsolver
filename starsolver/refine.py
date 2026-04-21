@@ -38,9 +38,12 @@ def _project_visible(plate: Plate, v_cel: np.ndarray, near_idx: np.ndarray,
     return px[local], py[local], near_idx[local]
 
 
+
 def _find_candidates(di, px_vis, py_vis, mag_vis, det_x, det_y, det_logb,
-                     thr2, phot_b, phot_sig, have_phot):
-    """Return ranked (vis_local_idx, dist²) pairs for detection di, or None."""
+                     thr2, phot_b, phot_sig, sigma_r):
+    """Return ranked (vis_local_idx, dist²) pairs for detection di, or None.
+    When phot_sig < 1e8: hard-reject outliers, then rank by (d/σ_r)² + (Δmag/σ_mag)².
+    Otherwise: brightness-first (no phot calibration yet)."""
     ddx = px_vis - det_x[di]
     ddy = py_vis - det_y[di]
     dist2 = ddx * ddx + ddy * ddy
@@ -48,7 +51,7 @@ def _find_candidates(di, px_vis, py_vis, mag_vis, det_x, det_y, det_logb,
     if len(within) == 0:
         return None
     d2_w = dist2[within]
-    if have_phot:
+    if phot_sig < 1e8:
         pred_mag = (det_logb[di] - phot_b) / PHOT_SLOPE
         resids = pred_mag - mag_vis[within]
         lims = np.where(resids > 0, 5.0 * phot_sig, 3.0 * phot_sig)
@@ -56,49 +59,28 @@ def _find_candidates(di, px_vis, py_vis, mag_vis, det_x, det_y, det_logb,
         within, d2_w = within[ok], d2_w[ok]
         if len(within) == 0:
             return None
-    order = np.argsort(mag_vis[within])
+        resids_w = resids[ok]
+        cost = d2_w / (sigma_r * sigma_r) + (resids_w / phot_sig) ** 2
+        order = np.argsort(cost)
+    else:
+        order = np.argsort(mag_vis[within])
     return list(zip(within[order].tolist(), d2_w[order].tolist()))
 
 
 def _assign_matches(n_det, det_x, det_y, det_logb,
                     px_vis, py_vis, mag_vis, vis_idx,
-                    threshold, phot_b, phot_sig):
-    """Spatial gate + photometric filter + greedy one-to-one dedup.
+                    threshold, phot_b, phot_sig, sigma_r):
+    """Spatial gate + photometric filter + joint likelihood (or brightness-first) selection.
     Returns (det_indices, cat_indices) int32 arrays."""
     thr2 = threshold * threshold
-    have_phot = phot_sig < 1e8
 
     det_cands = [
         _find_candidates(di, px_vis, py_vis, mag_vis, det_x, det_y, det_logb,
-                         thr2, phot_b, phot_sig, have_phot)
+                         thr2, phot_b, phot_sig, sigma_r)
         for di in range(n_det)
     ]
 
     det_choice = {di: cands[0] for di, cands in enumerate(det_cands) if cands}
-
-    for _pass in range(5):
-        cat_claimants: Dict = {}
-        for di, (j, d2) in det_choice.items():
-            cat_claimants.setdefault(j, []).append((di, d2))
-        displaced = []
-        for j, claimants in cat_claimants.items():
-            if len(claimants) <= 1:
-                continue
-            claimants.sort(key=lambda x: x[1])
-            for di, _ in claimants[1:]:
-                displaced.append(di)
-                del det_choice[di]
-        if not displaced:
-            break
-        taken = set(j for j, _ in det_choice.values())
-        for di in displaced:
-            if det_cands[di] is None:
-                continue
-            for j, d2 in det_cands[di]:
-                if j not in taken:
-                    det_choice[di] = (j, d2)
-                    taken.add(j)
-                    break
 
     det_list = sorted(det_choice.keys())
     cat_list  = [vis_idx[det_choice[di][0]] for di in det_list]
@@ -273,6 +255,8 @@ def refine(plate: Plate, stars: List[Dict],
     _fov_half_cos = np.cos(np.radians(min(plate.fov_deg, 90.0) / 2.0) + 0.3)
     near_idx = np.where((v_cel @ plate.R[0]) > _fov_half_cos)[0]
 
+    sigma_r = threshold / 3.0
+
     match_det_idx  = None
     match_star_idx = None
 
@@ -285,7 +269,7 @@ def refine(plate: Plate, stars: List[Dict],
         mdi, mci = _assign_matches(
             n_det, det_x, det_y, det_logb,
             px_vis, py_vis, mag[vis_idx], vis_idx,
-            threshold, phot_b, phot_sig)
+            threshold, phot_b, phot_sig, sigma_r)
         if len(mdi) < 4:
             break
 
@@ -294,6 +278,10 @@ def refine(plate: Plate, stars: List[Dict],
 
         phot_b, phot_sig = _fit_photometry(mdi, mci, det_logb, mag)
         plate = _gauss_newton_step(plate, v_cel[mci], det_x, det_y, mdi, fit_k1, fit_k2)
+
+        px_u, py_u = plate.project(v_cel[mci])
+        res_u = np.sqrt((px_u - det_x[mdi])**2 + (py_u - det_y[mdi])**2)
+        sigma_r = max(float(np.sqrt(np.mean(res_u**2))), 3.0)
 
         threshold = max(12.0, threshold * 0.75)
 

@@ -220,6 +220,7 @@ class Pipeline:
 
         self.plate = Plate.from_dict(result)
         self.plate.timestamp = self.timestamp
+
         d = self.config.draw
         draw_mask = self.detection_mask if d.mask_constellations else None
 
