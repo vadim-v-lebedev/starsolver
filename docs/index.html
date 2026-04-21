@@ -421,6 +421,10 @@
       <input type="range" id="cfgConstellationThickness" min="1" max="10" value="4">
       <span class="cfg-val" id="cfgConstellationThicknessVal">4</span>
     </div>
+    <div class="cfg-row">
+      <label>Mask constellations</label>
+      <input type="checkbox" id="cfgMaskConstellations">
+    </div>
   </div>
   <div class="cfg-section">
     <div class="cfg-row">
@@ -808,6 +812,7 @@ const DEFAULTS = {
   starRadius:             25,
   constellationColor:     '#ffb400',
   constellationThickness: 4,
+  maskConstellations:     false,
   matchColor:             '#ffb400',
   unknownColor:           '#c83232',
   circleThickness:        2,
@@ -856,6 +861,9 @@ function applySettings(s) {
   document.getElementById('cfgDetectionThicknessVal').textContent = s.detectionThickness;
   d.detection_color     = hexAsTuple(s.detectionColor);
   d.detection_thickness = s.detectionThickness;
+
+  document.getElementById('cfgMaskConstellations').checked = s.maskConstellations;
+  d.mask_constellations = s.maskConstellations;
 }
 
 function initSettings() {
@@ -885,6 +893,12 @@ function initSettings() {
   wireSlider('cfgDetectionThickness',     'cfgDetectionThicknessVal',     'detectionThickness',     v => pipeline.config.draw.detection_thickness     = v);
 
   wireColor('cfgConstellationColor', 'constellationColor', v => pipeline.config.draw.constellation_color = v);
+
+  document.getElementById('cfgMaskConstellations').addEventListener('change', e => {
+    pipeline.config.draw.mask_constellations = e.target.checked;
+    const s = loadSettings(); s.maskConstellations = e.target.checked; saveSettings(s);
+  });
+
   wireColor('cfgMatchColor',         'matchColor',         v => pipeline.config.draw.match_color         = v);
   wireColor('cfgUnknownColor',       'unknownColor',       v => pipeline.config.draw.unknown_color       = v);
   wireColor('cfgDetectionColor',     'detectionColor',     v => pipeline.config.draw.detection_color     = v);
@@ -1025,7 +1039,7 @@ async function onImageFile(file) {
 
   // Read EXIF (timestamp + FOV estimate); fall back to file.lastModified for timestamp
   currentFovEstimate = null;
-  pyodide.runPython('pipeline.fov_hint = None');
+  pyodide.runPython('pipeline.fov_hint = None; pipeline.detection_mask = None');
   try {
     const exif = JSON.parse(pyodide.runPython(
       `import json; json.dumps(pipeline.read_exif('${imagePath}'))`));

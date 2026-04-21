@@ -46,9 +46,11 @@ def draw_constellations(img: np.ndarray, plate: Plate,
                         catalog_path: Optional[str] = None,
                         color: Tuple = (255, 180, 0),
                         thickness: int = 4,
-                        star_radius: int = 25) -> np.ndarray:
+                        star_radius: int = 25,
+                        mask: Optional[np.ndarray] = None) -> np.ndarray:
     """Draw constellation lines onto img (RGB) using a plate solution."""
     h, w = img.shape[:2]
+    saved = img.copy() if mask is not None else None
     try:
         hip_coords = _get_hip_coords(catalog_path)
     except FileNotFoundError as e:
@@ -86,6 +88,9 @@ def draw_constellations(img: np.ndarray, plate: Plate,
                 draw.line([pa, pb], fill=color, width=thickness)
 
     img[:] = np.array(pil)
+    if mask is not None:
+        m = mask > 128
+        img[m] = saved[m]
     return img
 
 
@@ -129,11 +134,13 @@ def draw_catalog_stars(img: np.ndarray, plate: Plate,
 
 def draw_star_names(img: np.ndarray, matched_stars, matched_centroids,
                     star_radius: int = 25,
-                    color: Tuple = (255, 180, 0)) -> np.ndarray:
+                    color: Tuple = (255, 180, 0),
+                    mask: Optional[np.ndarray] = None) -> np.ndarray:
     """Draw Bayer designations (with real Greek letters) next to matched star circles."""
     if len(matched_stars) == 0:
         return img
 
+    saved = img.copy() if mask is not None else None
     matched_stars     = np.asarray(matched_stars,     dtype=np.float64)
     matched_centroids = np.asarray(matched_centroids, dtype=np.float64)
     h, w = img.shape[:2]
@@ -161,6 +168,9 @@ def draw_star_names(img: np.ndarray, matched_stars, matched_centroids,
         draw.text((tx, ty), name, font=font, fill=color)
 
     img[:] = np.array(pil_img)
+    if mask is not None:
+        m = mask > 128
+        img[m] = saved[m]
     return img
 
 
@@ -199,13 +209,15 @@ def _mag_alpha(mag: float, mag_bright: float = 0.5, mag_faint: float = 7.0,
     return alpha_bright - t * (alpha_bright - alpha_faint)
 
 
-def _draw_circles_with_alpha(img: np.ndarray, items, color, radius, thickness):
+def _draw_circles_with_alpha(img: np.ndarray, items, color, radius, thickness,
+                             mask: Optional[np.ndarray] = None):
     """Draw circles with per-circle opacity (alpha blend).
 
     items: iterable of (cx, cy, alpha) tuples.
     Groups by rounded alpha to minimise addWeighted calls.
     """
     from collections import defaultdict
+    saved = img.copy() if mask is not None else None
     groups = defaultdict(list)
     for cx, cy, a in items:
         groups[round(a, 1)].append((cx, cy))
@@ -221,15 +233,21 @@ def _draw_circles_with_alpha(img: np.ndarray, items, color, radius, thickness):
         img[:] = np.clip(alpha * overlay.astype(np.float32) +
                          (1 - alpha) * img.astype(np.float32), 0, 255).astype(np.uint8)
 
+    if mask is not None:
+        m = mask > 128
+        img[m] = saved[m]
+
 
 def _draw_refine_labels(img: np.ndarray, matched_stars: list,
                         star_radius: int = 25,
-                        color: Tuple = (255, 180, 0)) -> None:
+                        color: Tuple = (255, 180, 0),
+                        mask: Optional[np.ndarray] = None) -> None:
     """Draw Bayer designations next to matched stars."""
     named = [s for s in matched_stars if s['name']]
     if not named:
         return
 
+    saved = img.copy() if mask is not None else None
     h, w = img.shape[:2]
     font   = _get_label_font(60)
     offset = star_radius + 6
@@ -251,16 +269,21 @@ def _draw_refine_labels(img: np.ndarray, matched_stars: list,
         draw.text((tx, ty), name, font=font, fill=(r, g, b, int(255 * a)))
 
     img[:] = np.array(pil_img)
+    if mask is not None:
+        m = mask > 128
+        img[m] = saved[m]
 
 
 def _draw_unknown_labels(img: np.ndarray, unknowns: list,
                          plate: Plate, phot_b: float = 0.0,
                          star_radius: int = 25,
-                         color: Tuple = (200, 50, 50)) -> None:
+                         color: Tuple = (200, 50, 50),
+                         mask: Optional[np.ndarray] = None) -> None:
     """Label unknown detections with nearest catalog distance and mag diff."""
     if not unknowns:
         return
 
+    saved = img.copy() if mask is not None else None
     h, w = img.shape[:2]
 
     ra_rad, dec_rad, mag_cat, _ = _get_hip_catalog()
@@ -312,3 +335,6 @@ def _draw_unknown_labels(img: np.ndarray, unknowns: list,
             draw.text((tx, ty2), line2, font=font, fill=color)
 
     img[:] = np.array(pil_img)
+    if mask is not None:
+        m = mask > 128
+        img[m] = saved[m]

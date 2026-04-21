@@ -24,11 +24,12 @@ from draw import (load_image, draw_detections, draw_constellations, draw_star_na
 
 class Pipeline:
     def __init__(self, config: Config = None):
-        self.config       = config or Config()
-        self.stars        = []    # detected stars (list of dicts)
-        self.plate        = None  # Plate object (set after successful solve)
-        self.timestamp    = None  # ISO 8601 string from EXIF, or None
-        self.fov_hint     = None  # None=auto from EXIF; float=explicit (°, long axis); False=disabled
+        self.config           = config or Config()
+        self.stars            = []    # detected stars (list of dicts)
+        self.plate            = None  # Plate object (set after successful solve)
+        self.timestamp        = None  # ISO 8601 string from EXIF, or None
+        self.fov_hint         = None  # None=auto from EXIF; float=explicit (°, long axis); False=disabled
+        self.detection_mask   = None  # uint8 numpy array (image coords) from apply_mask, or None
 
     @staticmethod
     def read_exif(image_path: str) -> dict:
@@ -73,6 +74,17 @@ class Pipeline:
         img  = load_image(image_path)
         gray = load_image(image_path, 'L')
         self.stars = find_stars(gray, ratio_threshold=ratio_threshold)
+
+        if self.detection_mask is not None:
+            ih, iw = img.shape[:2]
+            self.stars = [
+                s for s in self.stars
+                if self.detection_mask[
+                    min(int(s['y']), ih - 1),
+                    min(int(s['x']), iw - 1)
+                ] < 128
+            ]
+
         d = self.config.draw
         draw_detections(img, self.stars,
                         color=d.detection_color, thickness=d.detection_thickness,
@@ -134,6 +146,12 @@ class Pipeline:
         ih, iw = img.shape[:2]
         sx = mask_w / iw
         sy = mask_h / ih
+
+        # Scale mask to image coordinates for later use in drawing
+        img_mask = np.array(
+            Image.fromarray(mask).resize((iw, ih), Image.NEAREST)
+        )
+        self.detection_mask = img_mask
 
         before = len(self.stars)
         self.stars = [
@@ -203,23 +221,27 @@ class Pipeline:
         self.plate = Plate.from_dict(result)
         self.plate.timestamp = self.timestamp
         d = self.config.draw
+        draw_mask = self.detection_mask if d.mask_constellations else None
 
         draw_constellations(img, self.plate,
                             color=d.constellation_color,
                             thickness=d.constellation_thickness,
-                            star_radius=d.star_radius)
+                            star_radius=d.star_radius,
+                            mask=draw_mask)
         centroids = result.get('matched_centroids', [])
         if centroids:
             _draw_circles_with_alpha(
                 img,
                 [(float(yx[1]), float(yx[0]), 1.0) for yx in centroids],
                 color=d.match_color, radius=d.star_radius, thickness=d.circle_thickness,
+                mask=draw_mask,
             )
         draw_star_names(img,
                         result.get('matched_stars', []),
                         result.get('matched_centroids', []),
                         star_radius=d.star_radius,
-                        color=d.match_color)
+                        color=d.match_color,
+                        mask=draw_mask)
         Image.fromarray(img).save(output_path, quality=95)
 
         return {
@@ -261,16 +283,19 @@ class Pipeline:
         refined_plate.timestamp = self.timestamp
         out_img = load_image(image_path)
         d = self.config.draw
+        draw_mask = self.detection_mask if d.mask_constellations else None
 
         draw_constellations(out_img, refined_plate,
                             color=d.constellation_color,
                             thickness=d.constellation_thickness,
-                            star_radius=d.star_radius)
+                            star_radius=d.star_radius,
+                            mask=draw_mask)
         _draw_circles_with_alpha(
             out_img,
             [(int(round(s['x'])), int(round(s['y'])), _mag_alpha(s['mag']))
              for s in result['matched_stars']],
             color=d.match_color, radius=d.star_radius, thickness=d.circle_thickness,
+            mask=draw_mask,
         )
 
         unknowns = result['unknown_detections']
@@ -279,13 +304,14 @@ class Pipeline:
                 out_img,
                 [(int(round(u['x'])), int(round(u['y'])), 1.0) for u in unknowns],
                 color=d.unknown_color, radius=d.star_radius, thickness=d.circle_thickness,
+                mask=draw_mask,
             )
 
         _draw_refine_labels(out_img, result['matched_stars'], d.star_radius,
-                            color=d.match_color)
+                            color=d.match_color, mask=draw_mask)
         _draw_unknown_labels(out_img, unknowns, refined_plate,
                              result.get('phot_b', 0.0), d.star_radius,
-                             color=d.unknown_color)
+                             color=d.unknown_color, mask=draw_mask)
 
         Image.fromarray(out_img).save(output_path, quality=95)
 
