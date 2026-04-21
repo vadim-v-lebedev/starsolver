@@ -19,7 +19,7 @@ from plate import Plate
 from config import Config
 from draw import (load_image, draw_detections, draw_constellations, draw_star_names,
                   _draw_circles_with_alpha, _mag_alpha,
-                  _draw_refine_labels, _draw_unknown_labels)
+                  _draw_refine_labels, _draw_unknown_labels, draw_timestamp)
 
 
 class Pipeline:
@@ -241,7 +241,10 @@ class Pipeline:
                         result.get('matched_centroids', []),
                         star_radius=d.star_radius,
                         color=d.match_color,
-                        mask=draw_mask)
+                        mask=draw_mask,
+                        font_size=d.text_size)
+        if d.show_timestamp and self.plate.timestamp:
+            draw_timestamp(img, self.plate.timestamp, font_size=d.text_size)
         Image.fromarray(img).save(output_path, quality=95)
 
         return {
@@ -308,10 +311,14 @@ class Pipeline:
             )
 
         _draw_refine_labels(out_img, result['matched_stars'], d.star_radius,
-                            color=d.match_color, mask=draw_mask)
+                            color=d.match_color, mask=draw_mask,
+                            font_size=d.text_size)
         _draw_unknown_labels(out_img, unknowns, refined_plate,
                              result.get('phot_b', 0.0), d.star_radius,
-                             color=d.unknown_color, mask=draw_mask)
+                             color=d.unknown_color, mask=draw_mask,
+                             font_size=d.text_size)
+        if d.show_timestamp and refined_plate.timestamp:
+            draw_timestamp(out_img, refined_plate.timestamp, font_size=d.text_size)
 
         Image.fromarray(out_img).save(output_path, quality=95)
 

@@ -135,7 +135,8 @@ def draw_catalog_stars(img: np.ndarray, plate: Plate,
 def draw_star_names(img: np.ndarray, matched_stars, matched_centroids,
                     star_radius: int = 25,
                     color: Tuple = (255, 180, 0),
-                    mask: Optional[np.ndarray] = None) -> np.ndarray:
+                    mask: Optional[np.ndarray] = None,
+                    font_size: int = 48) -> np.ndarray:
     """Draw Bayer designations (with real Greek letters) next to matched star circles."""
     if len(matched_stars) == 0:
         return img
@@ -145,7 +146,7 @@ def draw_star_names(img: np.ndarray, matched_stars, matched_centroids,
     matched_centroids = np.asarray(matched_centroids, dtype=np.float64)
     h, w = img.shape[:2]
 
-    font    = _get_label_font(60)
+    font    = _get_label_font(font_size)
     offset  = star_radius + 6
     pil_img = Image.fromarray(img)
     draw    = ImageDraw.Draw(pil_img)
@@ -241,7 +242,8 @@ def _draw_circles_with_alpha(img: np.ndarray, items, color, radius, thickness,
 def _draw_refine_labels(img: np.ndarray, matched_stars: list,
                         star_radius: int = 25,
                         color: Tuple = (255, 180, 0),
-                        mask: Optional[np.ndarray] = None) -> None:
+                        mask: Optional[np.ndarray] = None,
+                        font_size: int = 48) -> None:
     """Draw Bayer designations next to matched stars."""
     named = [s for s in matched_stars if s['name']]
     if not named:
@@ -249,7 +251,7 @@ def _draw_refine_labels(img: np.ndarray, matched_stars: list,
 
     saved = img.copy() if mask is not None else None
     h, w = img.shape[:2]
-    font   = _get_label_font(60)
+    font   = _get_label_font(font_size)
     offset = star_radius + 6
     pil_img = Image.fromarray(img)
     draw    = ImageDraw.Draw(pil_img)
@@ -278,7 +280,8 @@ def _draw_unknown_labels(img: np.ndarray, unknowns: list,
                          plate: Plate, phot_b: float = 0.0,
                          star_radius: int = 25,
                          color: Tuple = (200, 50, 50),
-                         mask: Optional[np.ndarray] = None) -> None:
+                         mask: Optional[np.ndarray] = None,
+                         font_size: int = 48) -> None:
     """Label unknown detections with nearest catalog distance and mag diff."""
     if not unknowns:
         return
@@ -300,7 +303,7 @@ def _draw_unknown_labels(img: np.ndarray, unknowns: list,
     vis_mag = mag_cat[vis]
 
     PHOT_SLOPE = -0.29
-    font    = _get_label_font(40)
+    font    = _get_label_font(max(24, font_size * 2 // 3))
     offset  = star_radius + 6
     pil_img = Image.fromarray(img)
     draw    = ImageDraw.Draw(pil_img)
@@ -338,3 +341,44 @@ def _draw_unknown_labels(img: np.ndarray, unknowns: list,
     if mask is not None:
         m = mask > 128
         img[m] = saved[m]
+
+
+# ── timestamp overlay ─────────────────────────────────────────────────────────
+
+def draw_timestamp(img: np.ndarray, timestamp: str,
+                   color: Tuple = (255, 255, 255),
+                   font_size: int = 48) -> np.ndarray:
+    """Draw an ISO 8601 timestamp in the bottom-left corner of img."""
+    try:
+        from datetime import datetime
+        dt = datetime.fromisoformat(timestamp)
+        if dt.tzinfo is not None:
+            label = dt.strftime('%Y-%m-%d  %H:%M:%S  ') + dt.strftime('%z')
+            label = label[:-2] + ':' + label[-2:]  # +0300 → +03:00
+        else:
+            label = dt.strftime('%Y-%m-%d  %H:%M:%S')
+    except (ValueError, TypeError):
+        label = timestamp
+
+    h, w = img.shape[:2]
+    font    = _get_label_font(font_size)
+    pil_img = Image.fromarray(img)
+    draw    = ImageDraw.Draw(pil_img)
+
+    margin = 20
+    bbox   = draw.textbbox((0, 0), label, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    tx = margin
+    ty = h - th - margin
+
+    pad     = 8
+    bg_box  = [tx - pad, ty - pad, tx + tw + pad, ty + th + pad]
+    pil_bg  = Image.fromarray(img.copy())
+    ImageDraw.Draw(pil_bg).rectangle(bg_box, fill=(0, 0, 0))
+    bg      = np.array(pil_bg).astype(np.float32)
+    img[:]  = np.clip(0.55 * bg + 0.45 * img.astype(np.float32), 0, 255).astype(np.uint8)
+
+    pil_img = Image.fromarray(img)
+    ImageDraw.Draw(pil_img).text((tx, ty), label, font=font, fill=color)
+    img[:] = np.array(pil_img)
+    return img

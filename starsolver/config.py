@@ -13,6 +13,8 @@ class DrawConfig:
     detection_thickness: int  = 5
     max_draw: int             = 2000
     mask_constellations: bool = False
+    show_timestamp: bool      = False
+    text_size: int            = 48
 
 
 @dataclass

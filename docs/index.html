@@ -425,6 +425,15 @@
       <label>Mask constellations</label>
       <input type="checkbox" id="cfgMaskConstellations">
     </div>
+    <div class="cfg-row">
+      <label>Show timestamp</label>
+      <input type="checkbox" id="cfgShowTimestamp">
+    </div>
+    <div class="cfg-row">
+      <label>Text size</label>
+      <input type="range" id="cfgTextSize" min="24" max="96" value="48">
+      <span class="cfg-val" id="cfgTextSizeVal">48</span>
+    </div>
   </div>
   <div class="cfg-section">
     <div class="cfg-row">
@@ -813,6 +822,8 @@ const DEFAULTS = {
   constellationColor:     '#ffb400',
   constellationThickness: 4,
   maskConstellations:     false,
+  showTimestamp:          false,
+  textSize:               48,
   matchColor:             '#ffb400',
   unknownColor:           '#c83232',
   circleThickness:        2,
@@ -864,6 +875,13 @@ function applySettings(s) {
 
   document.getElementById('cfgMaskConstellations').checked = s.maskConstellations;
   d.mask_constellations = s.maskConstellations;
+
+  document.getElementById('cfgShowTimestamp').checked = s.showTimestamp;
+  d.show_timestamp = s.showTimestamp;
+
+  document.getElementById('cfgTextSize').value         = s.textSize;
+  document.getElementById('cfgTextSizeVal').textContent = s.textSize;
+  d.text_size = s.textSize;
 }
 
 function initSettings() {
@@ -898,6 +916,13 @@ function initSettings() {
     pipeline.config.draw.mask_constellations = e.target.checked;
     const s = loadSettings(); s.maskConstellations = e.target.checked; saveSettings(s);
   });
+
+  document.getElementById('cfgShowTimestamp').addEventListener('change', e => {
+    pipeline.config.draw.show_timestamp = e.target.checked;
+    const s = loadSettings(); s.showTimestamp = e.target.checked; saveSettings(s);
+  });
+
+  wireSlider('cfgTextSize', 'cfgTextSizeVal', 'textSize', v => pipeline.config.draw.text_size = v);
 
   wireColor('cfgMatchColor',         'matchColor',         v => pipeline.config.draw.match_color         = v);
   wireColor('cfgUnknownColor',       'unknownColor',       v => pipeline.config.draw.unknown_color       = v);
@@ -983,11 +1008,11 @@ async function initPyodide() {
     }
 
     setProgress(55);
-    setStatus('Fetching star catalog (1.2 MB)…');
+    setStatus('Fetching star catalog…');
     pyodide.FS.writeFile('/ss/hip.npz', await fetchBinary(`${CDN_SS}/hip.npz`));
 
     setProgress(70);
-    setStatus('Fetching pattern database (7.7 MB)…');
+    setStatus('Fetching pattern database…');
     pyodide.FS.writeFile('/ss/tetra3_database.npz',
                          await fetchBinary(`${CDN_SS}/tetra3_database.npz`));
 
