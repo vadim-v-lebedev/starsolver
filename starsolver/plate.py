@@ -96,7 +96,7 @@ class Plate:
             k2 = float(d.get('k2', 0.0))
         else:
             fov = np.radians(d['FOV'])
-            f   = max(w, h) / 2.0 / np.tan(fov / 2.0)
+            f   = w / 2.0 / np.tan(fov / 2.0)  # FOV is always horizontal (width axis)
             cx  = w / 2.0
             cy  = h / 2.0
             k1  = 0.0
