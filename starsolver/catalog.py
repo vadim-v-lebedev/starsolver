@@ -249,8 +249,8 @@ def _load_catalog(catalog_path: Optional[str] = None):
         np.cos(dec_rad) * np.sin(ra_rad),
         np.sin(dec_rad),
     ])
-    _hip_catalog = (ra_rad, dec_rad, mag, v_cel)
     _hip_ids     = hip_ids.astype(np.int32)
+    _hip_catalog = (ra_rad, dec_rad, mag, v_cel, _hip_ids)
     _hip_cons    = data['cons'].astype(np.int32)
     _hip_id_to_cons = {int(h): int(c) for h, c in zip(_hip_ids, _hip_cons)}
 
@@ -261,18 +261,21 @@ def _load_catalog(catalog_path: Optional[str] = None):
     _hip_coords = coords
 
 
-def _get_hip_catalog(catalog_path: Optional[str] = None
-                     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Return (ra_rad, dec_rad, mag, v_cel) for the full catalog."""
+def _get_hip_catalog(mag_limit: Optional[float] = None
+                     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Return (ra_rad, dec_rad, mag, v_cel, hip_ids), optionally filtered by mag_limit."""
     if _hip_catalog is None:
-        _load_catalog(catalog_path)
-    return _hip_catalog
+        _load_catalog()
+    if mag_limit is None:
+        return _hip_catalog
+    ra_rad, dec_rad, mag, v_cel, hip_ids = _hip_catalog
+    sel = mag <= mag_limit
+    return ra_rad[sel], dec_rad[sel], mag[sel], v_cel[sel], hip_ids[sel]
 
 
-def _get_hip_coords(catalog_path: Optional[str] = None
-                    ) -> Dict[int, Tuple[float, float]]:
+def _get_hip_coords() -> Dict[int, Tuple[float, float]]:
     if _hip_coords is None:
-        _load_catalog(catalog_path)
+        _load_catalog()
     return _hip_coords
 
 

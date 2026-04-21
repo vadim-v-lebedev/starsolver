@@ -43,7 +43,6 @@ def _get_label_font(size: int = 32):
 # ── constellation lines ───────────────────────────────────────────────────────
 
 def draw_constellations(img: np.ndarray, plate: Plate,
-                        catalog_path: Optional[str] = None,
                         color: Tuple = (255, 180, 0),
                         thickness: int = 4,
                         star_radius: int = 25,
@@ -52,7 +51,7 @@ def draw_constellations(img: np.ndarray, plate: Plate,
     h, w = img.shape[:2]
     saved = img.copy() if mask is not None else None
     try:
-        hip_coords = _get_hip_coords(catalog_path)
+        hip_coords = _get_hip_coords()
     except FileNotFoundError as e:
         print(f"draw_constellations: {e}")
         return img
@@ -97,14 +96,13 @@ def draw_constellations(img: np.ndarray, plate: Plate,
 # ── catalog star overlay (dev tool) ──────────────────────────────────────────
 
 def draw_catalog_stars(img: np.ndarray, plate: Plate,
-                       catalog_path: Optional[str] = None,
                        mag_limit: float = 7.0,
                        opacity: float = 0.25,
                        color: Tuple = (255, 200, 0),
                        thickness: int = 2) -> np.ndarray:
     """Overlay Hipparcos catalog stars (mag <= mag_limit) on img."""
     h, w = img.shape[:2]
-    ra_rad, dec_rad, mag, _ = _get_hip_catalog(catalog_path)
+    ra_rad, dec_rad, mag, _, _ = _get_hip_catalog()
     v_cel = np.column_stack([np.cos(dec_rad) * np.cos(ra_rad),
                              np.cos(dec_rad) * np.sin(ra_rad),
                              np.sin(dec_rad)])

@@ -14,14 +14,14 @@ Distortion model selected by detection count:
   > 50 detections  → k1 + k2  (two radial terms)
 """
 import numpy as np
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 from minicv import project_points
 from plate import Plate
 from catalog import _get_hip_catalog, _STAR_NAMES, _CONS_NAMES, _get_hip_id_to_cons
 
 
-PHOT_SLOPE = -0.29   # log10(brightness) per catalog magnitude, empirical
+PHOT_SLOPE = 1.0
 
 
 # ── ICP sub-steps ─────────────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ def _project_visible(plate: Plate, v_cel: np.ndarray, near_idx: np.ndarray,
                      threshold: float, w: int, h: int):
     """Project near catalog stars; return those falling within the image margin."""
     px, py = plate.project(v_cel[near_idx])
-    margin = threshold + 100.0
+    margin = threshold
     local = np.where(
         (px >= -margin) & (px < w + margin) &
         (py >= -margin) & (py < h + margin)
@@ -204,8 +204,7 @@ def _build_result(plate: Plate, v_cel: np.ndarray,
 # ── main entry point ──────────────────────────────────────────────────────────
 
 def refine(plate: Plate, stars: List[Dict],
-           catalog_path: Optional[str] = None,
-           n_iter: int = 15) -> Dict:
+           n_iter: int = 10) -> Dict:
     """
     Refine a plate solution using ICP with per-iteration Gauss-Newton steps.
 
@@ -217,26 +216,13 @@ def refine(plate: Plate, stars: List[Dict],
         matched_centroids:  list of [y, x]
         unknown_detections: list of {x, y, brightness}
     """
-    import catalog as _cat
-    if _cat._hip_ids is None:
-        _cat._load_catalog(catalog_path)
-    hip_ids_full = _cat._hip_ids
-
     w, h = plate.w, plate.h
     n_det = len(stars)
     if n_det < 4:
         return {'status': 'failed'}
 
-    ra_rad_full, dec_rad_full, mag_full, v_cel_full = _get_hip_catalog(catalog_path)
-
-    mag_limit = 7.0
-
-    def _apply_mag_limit(lim):
-        sel = mag_full <= lim
-        return (ra_rad_full[sel], dec_rad_full[sel], mag_full[sel],
-                hip_ids_full[sel], v_cel_full[sel])
-
-    ra_rad, dec_rad, mag, hip_ids_arr, v_cel = _apply_mag_limit(mag_limit)
+    mag_limit = 5.0
+    ra_rad, dec_rad, mag, v_cel, hip_ids_arr = _get_hip_catalog(mag_limit)
 
     fit_k1 = n_det >= 15
     fit_k2 = n_det >= 50
@@ -244,7 +230,7 @@ def refine(plate: Plate, stars: List[Dict],
     det_x     = np.array([s['x']          for s in stars], dtype=np.float64)
     det_y     = np.array([s['y']          for s in stars], dtype=np.float64)
     det_bright = np.array([s['brightness'] for s in stars], dtype=np.float64)
-    det_logb  = np.log10(np.maximum(det_bright, 1e-12))
+    det_logb  = -2.5 * np.log10(np.maximum(det_bright, 1e-12))
 
     arcsec_per_px = plate.fov_deg * 3600.0 / w
     threshold = max(50.0, 5.0 * (60.0 / arcsec_per_px))
@@ -290,7 +276,7 @@ def refine(plate: Plate, stars: List[Dict],
             new_limit = min(faintest + 1.5, 12.0)
             if new_limit > mag_limit + 0.5:
                 mag_limit = new_limit
-                ra_rad, dec_rad, mag, hip_ids_arr, v_cel = _apply_mag_limit(mag_limit)
+                ra_rad, dec_rad, mag, v_cel, hip_ids_arr = _get_hip_catalog(mag_limit)
                 near_idx = np.where((v_cel @ plate.R[0]) > _fov_half_cos)[0]
 
     if match_det_idx is None or len(match_det_idx) < 4:
