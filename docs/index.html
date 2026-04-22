@@ -1187,7 +1187,7 @@ btnSolve.addEventListener('click', async () => {
       const rmse = r.get('RMSE').toFixed(0);
       const n    = r.get('matches');
       const t    = (r.get('T_solve') / 1000).toFixed(1);
-      const cons = r.get('constellations').toString();
+      const cons = (r.get('constellations') ?? '').toString();
       r.destroy();
 
       showImage(pyodide.FS.readFile(outputPath));
@@ -1254,8 +1254,8 @@ btnRefine.addEventListener('click', async () => {
       const unkn    = r.get('unknowns');
       const lim     = r.get('mag_limit').toFixed(1);
       const t       = (r.get('T_refine') / 1000).toFixed(1);
-      const cons    = r.get('constellations').toString();
-      const planets = r.get('planets').toString();
+      const cons    = (r.get('constellations') ?? '').toString();
+      const planets = (r.get('planets')        ?? '').toString();
       r.destroy();
 
       showImage(pyodide.FS.readFile(outputPath));
