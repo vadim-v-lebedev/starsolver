@@ -387,6 +387,11 @@
   </div>
   <div id="achConsList"></div>
   <div class="ach-row" style="border-top:1px solid #1a1a30; border-bottom:none; margin-top:4px">
+    <span class="ach-label">Planets observed</span>
+    <span class="ach-big"><span id="achPlanetCount">0</span><span class="ach-dim">/7</span></span>
+  </div>
+  <div id="achPlanetList" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 0 6px"></div>
+  <div class="ach-row" style="border-top:1px solid #1a1a30; border-bottom:none; margin-top:4px">
     <span class="ach-label">Faintest object</span>
     <span class="ach-big" id="achFaintest">—</span>
   </div>
@@ -430,6 +435,10 @@
       <input type="checkbox" id="cfgShowTimestamp">
     </div>
     <div class="cfg-row">
+      <label>Show planets</label>
+      <input type="checkbox" id="cfgShowPlanets">
+    </div>
+    <div class="cfg-row">
       <label>Text size</label>
       <input type="range" id="cfgTextSize" min="24" max="96" value="48">
       <span class="cfg-val" id="cfgTextSizeVal">48</span>
@@ -443,6 +452,10 @@
     <div class="cfg-row">
       <label>Unknown color</label>
       <input type="color" id="cfgUnknownColor" value="#c83232">
+    </div>
+    <div class="cfg-row">
+      <label>Planet color</label>
+      <input type="color" id="cfgSpecialColor" value="#0064ff">
     </div>
     <div class="cfg-row">
       <label>Circle width</label>
@@ -646,6 +659,7 @@ async function fetchBinary(url) {
   return new Uint8Array(await r.arrayBuffer());
 }
 
+
 // ── achievements ──────────────────────────────────────────────────────────────
 
 const CONS_ALL = [
@@ -693,7 +707,7 @@ function loadImageStore() {
   } catch {}
 }
 
-function updateAchievements({ constellations, faintest, imageFile } = {}) {
+function updateAchievements({ constellations, planets, faintest, imageFile } = {}) {
   const a = loadAch();
   if (!a.imageFiles) a.imageFiles = [];
 
@@ -705,6 +719,11 @@ function updateAchievements({ constellations, faintest, imageFile } = {}) {
     const seen = new Set(a.constellations);
     constellations.forEach(c => seen.add(c));
     a.constellations = [...seen];
+  }
+  if (planets && planets.length) {
+    const seen = new Set(a.planets || []);
+    planets.forEach(p => seen.add(p));
+    a.planets = [...seen];
   }
   if (faintest != null && (a.faintest === null || faintest > a.faintest)) {
     a.faintest = faintest;
@@ -763,6 +782,15 @@ function renderAchievements() {
   list.querySelectorAll('.cons-tag').forEach(el => {
     el.classList.toggle('seen', seen.has(el.dataset.cons));
   });
+
+  // Planets
+  const seenPlanets = new Set(a.planets || []);
+  document.getElementById('achPlanetCount').textContent = seenPlanets.size;
+  const ALL_PLANETS = ['Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune'];
+  const pList = document.getElementById('achPlanetList');
+  pList.innerHTML = ALL_PLANETS.map(p =>
+    `<span class="cons-tag${seenPlanets.has(p) ? ' seen' : ''}">${p}</span>`
+  ).join('');
 
   // Processed images (session)
   const imgList = document.getElementById('achImageList');
@@ -823,9 +851,11 @@ const DEFAULTS = {
   constellationThickness: 4,
   maskConstellations:     false,
   showTimestamp:          false,
+  showPlanets:            false,
   textSize:               48,
   matchColor:             '#ffb400',
   unknownColor:           '#c83232',
+  specialColor:           '#0064ff',
   circleThickness:        2,
   detectionColor:         '#00ff00',
   detectionThickness:     5,
@@ -879,6 +909,12 @@ function applySettings(s) {
   document.getElementById('cfgShowTimestamp').checked = s.showTimestamp;
   d.show_timestamp = s.showTimestamp;
 
+  document.getElementById('cfgShowPlanets').checked = s.showPlanets || false;
+  d.show_planets = s.showPlanets || false;
+
+  document.getElementById('cfgSpecialColor').value = s.specialColor;
+  d.special_color = hexAsTuple(s.specialColor);
+
   document.getElementById('cfgTextSize').value         = s.textSize;
   document.getElementById('cfgTextSizeVal').textContent = s.textSize;
   d.text_size = s.textSize;
@@ -922,11 +958,17 @@ function initSettings() {
     const s = loadSettings(); s.showTimestamp = e.target.checked; saveSettings(s);
   });
 
+  document.getElementById('cfgShowPlanets').addEventListener('change', e => {
+    pipeline.config.draw.show_planets = e.target.checked;
+    const s = loadSettings(); s.showPlanets = e.target.checked; saveSettings(s);
+  });
+
   wireSlider('cfgTextSize', 'cfgTextSizeVal', 'textSize', v => pipeline.config.draw.text_size = v);
 
-  wireColor('cfgMatchColor',         'matchColor',         v => pipeline.config.draw.match_color         = v);
-  wireColor('cfgUnknownColor',       'unknownColor',       v => pipeline.config.draw.unknown_color       = v);
-  wireColor('cfgDetectionColor',     'detectionColor',     v => pipeline.config.draw.detection_color     = v);
+  wireColor('cfgMatchColor',     'matchColor',     v => pipeline.config.draw.match_color     = v);
+  wireColor('cfgUnknownColor',   'unknownColor',   v => pipeline.config.draw.unknown_color   = v);
+  wireColor('cfgSpecialColor',   'specialColor',   v => pipeline.config.draw.special_color   = v);
+  wireColor('cfgDetectionColor', 'detectionColor', v => pipeline.config.draw.detection_color = v);
 
   document.getElementById('btnResetSettings').addEventListener('click', () => {
     localStorage.removeItem(SETTINGS_KEY);
@@ -979,7 +1021,7 @@ const CDN_T3  = 'https://cdn.jsdelivr.net/gh/vadim-v-lebedev/tetra3@master/tetra
 
 const SS_FILES = ['pipeline.py','detector.py','solver.py','refine.py',
                   'plate.py','draw.py','catalog.py','minicv.py','config.py',
-                  'panorama.py'];
+                  'panorama.py','planets.py'];
 const T3_FILES = ['__init__.py','tetra3.py'];
 
 async function initPyodide() {
@@ -1204,21 +1246,27 @@ btnRefine.addEventListener('click', async () => {
     const status = r.get('status').toString();
 
     if (status === 'refined') {
-      const ra   = r.get('RA').toFixed(2);
-      const dec  = r.get('Dec').toFixed(2);
-      const fov  = r.get('FOV').toFixed(1);
-      const rmse = r.get('RMSE').toFixed(0);
-      const n    = r.get('matches');
-      const unkn = r.get('unknowns');
-      const lim  = r.get('mag_limit').toFixed(1);
-      const t    = (r.get('T_refine') / 1000).toFixed(1);
-      const cons = r.get('constellations').toString();
+      const ra      = r.get('RA').toFixed(2);
+      const dec     = r.get('Dec').toFixed(2);
+      const fov     = r.get('FOV').toFixed(1);
+      const rmse    = r.get('RMSE').toFixed(0);
+      const n       = r.get('matches');
+      const unkn    = r.get('unknowns');
+      const lim     = r.get('mag_limit').toFixed(1);
+      const t       = (r.get('T_refine') / 1000).toFixed(1);
+      const cons    = r.get('constellations').toString();
+      const planets = r.get('planets').toString();
       r.destroy();
 
       showImage(pyodide.FS.readFile(outputPath));
-      updateAchievements({ constellations: cons ? cons.split(', ') : [], faintest: parseFloat(lim), imageFile: currentImageFile });
+      updateAchievements({
+        constellations: cons    ? cons.split(', ')    : [],
+        planets:        planets ? planets.split(', ') : [],
+        faintest: parseFloat(lim), imageFile: currentImageFile,
+      });
       const unkStr = unkn > 0 ? `  ${unkn} unidentified` : '';
-      let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} id  lim=${lim}m  ${t}s${unkStr}`;
+      const plStr  = planets   ? `  ${planets}` : '';
+      let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} id  lim=${lim}m  ${t}s${unkStr}${plStr}`;
       if (cons) msg += `\n${cons}`;
       setStatus(msg);
       setButtons({ load:true, detect:true, mask:starsOk, solve:true, refine:true, save:true, settings:true, achievements:true});

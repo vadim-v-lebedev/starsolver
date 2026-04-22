@@ -274,6 +274,40 @@ def _draw_refine_labels(img: np.ndarray, matched_stars: list,
         img[m] = saved[m]
 
 
+def _draw_special_labels(img: np.ndarray, specials: list,
+                         star_radius: int = 25,
+                         color: Tuple = (0, 100, 255),
+                         mask: Optional[np.ndarray] = None,
+                         font_size: int = 48) -> None:
+    """Draw planet name labels next to matched special objects."""
+    if not specials:
+        return
+
+    saved = img.copy() if mask is not None else None
+    h, w  = img.shape[:2]
+    font   = _get_label_font(font_size)
+    offset = star_radius + 6
+    pil_img = Image.fromarray(img)
+    draw    = ImageDraw.Draw(pil_img)
+
+    for obj in specials:
+        name   = obj['name']
+        px, py = int(round(obj['x'])), int(round(obj['y']))
+        tx, ty = px + offset, py - 10
+        bbox = draw.textbbox((tx, ty), name, font=font)
+        tw = bbox[2] - bbox[0]
+        if tx + tw > w:
+            tx = px - offset - tw
+        if ty < 0:
+            ty = py + offset
+        draw.text((tx, ty), name, font=font, fill=color)
+
+    img[:] = np.array(pil_img)
+    if mask is not None:
+        m = mask > 128
+        img[m] = saved[m]
+
+
 def _draw_unknown_labels(img: np.ndarray, unknowns: list,
                          plate: Plate,
                          star_radius: int = 25,

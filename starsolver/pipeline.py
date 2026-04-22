@@ -19,7 +19,8 @@ from plate import Plate
 from config import Config
 from draw import (load_image, draw_detections, draw_constellations, draw_star_names,
                   _draw_circles_with_alpha, _mag_alpha,
-                  _draw_refine_labels, _draw_unknown_labels, draw_timestamp)
+                  _draw_refine_labels, _draw_unknown_labels,
+                  _draw_special_labels, draw_timestamp)
 
 
 class Pipeline:
@@ -303,6 +304,25 @@ class Pipeline:
         )
 
         unknowns = result['unknown_detections']
+
+        # ── planet matching ───────────────────────────────────────────────
+        planet_matches = []
+        if d.show_planets and self.timestamp:
+            from planets import match_planets as _match_planets
+            arcsec_per_px = refined_plate.fov_deg * 3600.0 / refined_plate.w
+            # 15 arcmin covers Jupiter/Saturn great-inequality error (up to ~11')
+            planet_thr    = min(300.0, max(15.0, 900.0 / arcsec_per_px))
+            planet_matches = _match_planets(
+                refined_plate, self.timestamp, unknowns, planet_thr)
+
+        if planet_matches:
+            _draw_circles_with_alpha(
+                out_img,
+                [(int(round(p['x'])), int(round(p['y'])), 1.0) for p in planet_matches],
+                color=d.special_color, radius=d.star_radius, thickness=d.circle_thickness,
+                mask=draw_mask,
+            )
+
         if unknowns:
             _draw_circles_with_alpha(
                 out_img,
@@ -314,6 +334,9 @@ class Pipeline:
         _draw_refine_labels(out_img, result['matched_stars'], d.star_radius,
                             color=d.match_color, mask=draw_mask,
                             font_size=d.text_size)
+        _draw_special_labels(out_img, planet_matches, d.star_radius,
+                             color=d.special_color, mask=draw_mask,
+                             font_size=d.text_size)
         _draw_unknown_labels(out_img, unknowns, refined_plate,
                              d.star_radius,
                              color=d.unknown_color, mask=draw_mask,
@@ -331,7 +354,8 @@ class Pipeline:
             'FOV':            result['FOV'],
             'RMSE':           result['RMSE'],
             'matches':        result['matches'],
-            'unknowns':       len(result['unknown_detections']),
+            'unknowns':       len(unknowns),
+            'planets':        ', '.join(p['name'] for p in planet_matches),
             'mag_limit':      round(faintest_mag, 1),
             'T_refine':       t_ms,
             'constellations': ', '.join(result.get('constellations', [])),

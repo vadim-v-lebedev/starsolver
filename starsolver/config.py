@@ -12,8 +12,10 @@ class DrawConfig:
     detection_color: tuple    = (0, 255, 0)
     detection_thickness: int  = 5
     max_draw: int             = 2000
+    special_color: tuple      = (0, 100, 255)
     mask_constellations: bool = False
     show_timestamp: bool      = False
+    show_planets: bool        = False
     text_size: int            = 48
 
 
