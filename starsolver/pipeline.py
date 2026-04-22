@@ -315,7 +315,7 @@ class Pipeline:
                             color=d.match_color, mask=draw_mask,
                             font_size=d.text_size)
         _draw_unknown_labels(out_img, unknowns, refined_plate,
-                             result.get('phot_b', 0.0), d.star_radius,
+                             d.star_radius,
                              color=d.unknown_color, mask=draw_mask,
                              font_size=d.text_size)
         if d.show_timestamp and refined_plate.timestamp:

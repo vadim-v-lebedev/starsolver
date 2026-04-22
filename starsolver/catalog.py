@@ -290,7 +290,7 @@ def _hip_id_for_radec(ra_deg: float, dec_deg: float) -> int:
     """Return the HIP ID of the catalog star nearest to (ra_deg, dec_deg)."""
     if _hip_catalog is None:
         _load_catalog()
-    ra_rad_arr, dec_rad_arr, _, _ = _hip_catalog
+    ra_rad_arr, dec_rad_arr, _, _, _ = _hip_catalog
     ra_r  = np.radians(ra_deg)
     dec_r = np.radians(dec_deg)
     dra   = ra_rad_arr - ra_r

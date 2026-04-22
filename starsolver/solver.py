@@ -94,7 +94,7 @@ def plate_solve(stars: List[Dict], image_width: int, image_height: int,
             import catalog as _cat
             from catalog import _CONS_NAMES
             ms = np.asarray(ms, dtype=np.float64)   # (M, 2): [[ra_deg, dec_deg], ...]
-            ra_rad_cat, dec_rad_cat, _, _ = _cat._get_hip_catalog()
+            ra_rad_cat, dec_rad_cat, _, _, _ = _cat._get_hip_catalog()
 
             # Vectorised nearest-neighbour lookup into the full catalog
             ra_q  = np.radians(ms[:, 0])[:, None]

@@ -21,10 +21,31 @@ from plate import Plate
 from catalog import _get_hip_catalog, _STAR_NAMES, _CONS_NAMES, _get_hip_id_to_cons
 
 
-PHOT_SLOPE = 1.0
+PHOT_SLOPE = 0.7
+BLEND_R    = 5.0   # pixel radius within which catalog stars contribute to a blended detection
 
 
 # ── ICP sub-steps ─────────────────────────────────────────────────────────────
+
+
+def _effective_mags(within, px_vis, py_vis, mag_vis):
+    """For each candidate, return effective magnitude including spatially blended companions."""
+    n = len(within)
+    if n <= 1:
+        return mag_vis[within].copy()
+    px_w = px_vis[within]
+    py_w = py_vis[within]
+    blend_r2 = BLEND_R * BLEND_R
+    eff = np.empty(n)
+    for i in range(n):
+        dx = px_w - px_w[i]
+        dy = py_w - py_w[i]
+        companions = np.where(dx * dx + dy * dy <= blend_r2)[0]
+        if len(companions) == 1:
+            eff[i] = mag_vis[within[i]]
+        else:
+            eff[i] = -2.5 * np.log10(np.sum(10.0 ** (-0.4 * mag_vis[within[companions]])))
+    return eff
 
 def _project_visible(plate: Plate, v_cel: np.ndarray, near_idx: np.ndarray,
                      threshold: float, w: int, h: int):
@@ -41,9 +62,10 @@ def _project_visible(plate: Plate, v_cel: np.ndarray, near_idx: np.ndarray,
 
 def _find_candidates(di, px_vis, py_vis, mag_vis, det_x, det_y, det_logb,
                      thr2, phot_b, phot_sig, sigma_r):
-    """Return ranked (vis_local_idx, dist²) pairs for detection di, or None.
+    """Return ranked (vis_local_idx, dist², eff_mag) triples for detection di, or None.
     When phot_sig < 1e8: hard-reject outliers, then rank by (d/σ_r)² + (Δmag/σ_mag)².
-    Otherwise: brightness-first (no phot calibration yet)."""
+    Otherwise: brightness-first (no phot calibration yet).
+    eff_mag accounts for blended companion stars within BLEND_R pixels."""
     ddx = px_vis - det_x[di]
     ddy = py_vis - det_y[di]
     dist2 = ddx * ddx + ddy * ddy
@@ -52,19 +74,21 @@ def _find_candidates(di, px_vis, py_vis, mag_vis, det_x, det_y, det_logb,
         return None
     d2_w = dist2[within]
     if phot_sig < 1e8:
+        eff_mag = _effective_mags(within, px_vis, py_vis, mag_vis)
         pred_mag = (det_logb[di] - phot_b) / PHOT_SLOPE
-        resids = pred_mag - mag_vis[within]
+        resids = pred_mag - eff_mag
         lims = np.where(resids > 0, 5.0 * phot_sig, 3.0 * phot_sig)
         ok = np.abs(resids) <= lims
-        within, d2_w = within[ok], d2_w[ok]
+        within, d2_w, eff_mag = within[ok], d2_w[ok], eff_mag[ok]
         if len(within) == 0:
             return None
         resids_w = resids[ok]
         cost = d2_w / (sigma_r * sigma_r) + (resids_w / phot_sig) ** 2
         order = np.argsort(cost)
     else:
-        order = np.argsort(mag_vis[within])
-    return list(zip(within[order].tolist(), d2_w[order].tolist()))
+        eff_mag = mag_vis[within]
+        order = np.argsort(eff_mag)
+    return list(zip(within[order].tolist(), d2_w[order].tolist(), eff_mag[order].tolist()))
 
 
 def _assign_matches(n_det, det_x, det_y, det_logb,
@@ -84,13 +108,16 @@ def _assign_matches(n_det, det_x, det_y, det_logb,
 
     det_list = sorted(det_choice.keys())
     cat_list  = [vis_idx[det_choice[di][0]] for di in det_list]
-    return np.array(det_list, dtype=np.int32), np.array(cat_list, dtype=np.int32)
+    mag_eff   = [det_choice[di][2]          for di in det_list]
+    return (np.array(det_list, dtype=np.int32),
+            np.array(cat_list, dtype=np.int32),
+            np.array(mag_eff,  dtype=np.float64))
 
 
-def _fit_photometry(mdi, mci, det_logb, mag):
+def _fit_photometry(mdi, det_logb, mag_eff):
     """Fit photometric zero-point (fixed slope) with sigma-clipping.
     Returns (phot_b, phot_sig) in magnitude units."""
-    offsets = det_logb[mdi] - PHOT_SLOPE * mag[mci]
+    offsets = det_logb[mdi] - PHOT_SLOPE * mag_eff
     b   = float(np.median(offsets))
     res = offsets - b
     sig = float(np.sqrt(np.mean(res ** 2)))
@@ -128,7 +155,7 @@ def _gauss_newton_step(plate: Plate, v_cel_m: np.ndarray,
 
 def _build_result(plate: Plate, v_cel: np.ndarray,
                   ra_rad, dec_rad, mag, hip_ids_arr,
-                  mdi, mci, det_x, det_y, stars, phot_b) -> Dict:
+                  mdi, mci, det_x, det_y, det_logb, stars, phot_b) -> Dict:
     """Compute final residuals and assemble the return dict."""
     w, h = plate.w, plate.h
 
@@ -170,8 +197,10 @@ def _build_result(plate: Plate, v_cel: np.ndarray,
 
     matched_set = set(mdi.tolist())
     unknown_dets = [
-        {'x': float(det_x[di]), 'y': float(det_y[di]),
-         'brightness': float(stars[di]['brightness'])}
+        {'x':        float(det_x[di]),
+         'y':        float(det_y[di]),
+         'brightness': float(stars[di]['brightness']),
+         'pred_mag': float((det_logb[di] - phot_b) / PHOT_SLOPE)}
         for di in range(len(det_x))
         if di not in matched_set
     ]
@@ -252,7 +281,7 @@ def refine(plate: Plate, stars: List[Dict],
         if len(vis_idx) == 0:
             break
 
-        mdi, mci = _assign_matches(
+        mdi, mci, mag_eff = _assign_matches(
             n_det, det_x, det_y, det_logb,
             px_vis, py_vis, mag[vis_idx], vis_idx,
             threshold, phot_b, phot_sig, sigma_r)
@@ -262,7 +291,7 @@ def refine(plate: Plate, stars: List[Dict],
         match_det_idx  = mdi
         match_star_idx = mci
 
-        phot_b, phot_sig = _fit_photometry(mdi, mci, det_logb, mag)
+        phot_b, phot_sig = _fit_photometry(mdi, det_logb, mag_eff)
         plate = _gauss_newton_step(plate, v_cel[mci], det_x, det_y, mdi, fit_k1, fit_k2)
 
         px_u, py_u = plate.project(v_cel[mci])
@@ -283,4 +312,4 @@ def refine(plate: Plate, stars: List[Dict],
         return {'status': 'failed'}
 
     return _build_result(plate, v_cel, ra_rad, dec_rad, mag, hip_ids_arr,
-                         match_det_idx, match_star_idx, det_x, det_y, stars, phot_b)
+                         match_det_idx, match_star_idx, det_x, det_y, det_logb, stars, phot_b)

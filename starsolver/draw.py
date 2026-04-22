@@ -275,7 +275,7 @@ def _draw_refine_labels(img: np.ndarray, matched_stars: list,
 
 
 def _draw_unknown_labels(img: np.ndarray, unknowns: list,
-                         plate: Plate, phot_b: float = 0.0,
+                         plate: Plate,
                          star_radius: int = 25,
                          color: Tuple = (200, 50, 50),
                          mask: Optional[np.ndarray] = None,
@@ -287,7 +287,7 @@ def _draw_unknown_labels(img: np.ndarray, unknowns: list,
     saved = img.copy() if mask is not None else None
     h, w = img.shape[:2]
 
-    ra_rad, dec_rad, mag_cat, _ = _get_hip_catalog()
+    ra_rad, dec_rad, mag_cat, _, _ = _get_hip_catalog()
     v_cel = np.column_stack([np.cos(dec_rad) * np.cos(ra_rad),
                              np.cos(dec_rad) * np.sin(ra_rad),
                              np.sin(dec_rad)])
@@ -300,7 +300,6 @@ def _draw_unknown_labels(img: np.ndarray, unknowns: list,
     vis_py  = cat_py[vis]
     vis_mag = mag_cat[vis]
 
-    PHOT_SLOPE = -0.29
     font    = _get_label_font(max(24, font_size * 2 // 3))
     offset  = star_radius + 6
     pil_img = Image.fromarray(img)
@@ -308,17 +307,13 @@ def _draw_unknown_labels(img: np.ndarray, unknowns: list,
 
     for u in unknowns:
         ux, uy = u['x'], u['y']
-        dists      = np.sqrt((vis_px - ux) ** 2 + (vis_py - uy) ** 2)
-        nearest_i  = int(np.argmin(dists))
+        dists        = np.sqrt((vis_px - ux) ** 2 + (vis_py - uy) ** 2)
+        nearest_i    = int(np.argmin(dists))
         nearest_dist = float(dists[nearest_i])
         nearest_mag  = float(vis_mag[nearest_i])
 
-        bright = u.get('brightness', 0)
-        if bright > 0:
-            pred_mag = (np.log10(bright) - phot_b) / PHOT_SLOPE
-            line2 = f"{pred_mag - nearest_mag:+.1f}m"
-        else:
-            line2 = ""
+        pred_mag = u.get('pred_mag')
+        line2 = f"{pred_mag - nearest_mag:+.1f}m" if pred_mag is not None else ""
 
         line1 = f"{nearest_dist:.1f}px"
         px, py = int(round(ux)), int(round(uy))
