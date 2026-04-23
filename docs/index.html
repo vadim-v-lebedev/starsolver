@@ -1117,6 +1117,9 @@ async function onImageFile(file) {
     currentImageTimestamp = file.lastModified ? new Date(file.lastModified).toISOString() : null;
   }
   setFovSlider({ enabled: true, value: currentFovEstimate });
+  fovHintOn = currentFovEstimate !== null;
+  elFovHintEnabled.checked = fovHintOn;
+  elFovSlider.disabled = !fovHintOn;
 }
 
 document.getElementById('inputGallery').addEventListener('change', e => {
