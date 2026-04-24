@@ -212,10 +212,21 @@ CONSTELLATIONS: Dict[str, str] = {
 from functools import cache
 import os
 
+_catalog_path_override: Optional[str] = None
 
-def _resolve_catalog_path(catalog_path: Optional[str]) -> str:
+
+def set_catalog_path(path: Optional[str]) -> None:
+    """Set (or clear) the default catalog path and invalidate the cache."""
+    global _catalog_path_override
+    _catalog_path_override = path
+    _load_catalog.cache_clear()
+
+
+def _resolve_catalog_path(catalog_path: Optional[str] = None) -> str:
     if catalog_path and os.path.exists(catalog_path):
         return catalog_path
+    if _catalog_path_override and os.path.exists(_catalog_path_override):
+        return _catalog_path_override
     default = os.path.join(os.path.dirname(__file__), 'hip.npz')
     if os.path.exists(default):
         return default

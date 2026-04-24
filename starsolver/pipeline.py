@@ -88,7 +88,7 @@ class Pipeline:
 
         d = self.config.draw
         draw_detections(img, self.stars,
-                        color=d.detection_color, thickness=d.detection_thickness,
+                        color=d.detection_color, thickness=d.circle_thickness,
                         star_radius=d.star_radius, max_draw=d.max_draw)
         Image.fromarray(img).save(output_path, quality=95)
 
@@ -165,7 +165,7 @@ class Pipeline:
 
         d = self.config.draw
         draw_detections(img, self.stars,
-                        color=d.detection_color, thickness=d.detection_thickness,
+                        color=d.detection_color, thickness=d.circle_thickness,
                         star_radius=d.star_radius, max_draw=d.max_draw)
         Image.fromarray(img).save(output_path, quality=95)
 
@@ -306,17 +306,16 @@ class Pipeline:
         unknowns = result['unknown_detections']
 
         # ── special object matching (planets + deep-sky) ─────────────────
+        arcsec_per_px = refined_plate.fov_deg * 3600.0 / refined_plate.w
+        # 15 arcmin covers Jupiter/Saturn great-inequality error (up to ~11')
+        special_thr = min(300.0, max(15.0, 900.0 / arcsec_per_px))
         special_matches = []
-        if d.show_planets:
-            arcsec_per_px = refined_plate.fov_deg * 3600.0 / refined_plate.w
-            # 15 arcmin covers Jupiter/Saturn great-inequality error (up to ~11')
-            special_thr = min(300.0, max(15.0, 900.0 / arcsec_per_px))
-            if self.timestamp:
-                from planets import match_planets as _match_planets
-                special_matches += _match_planets(
-                    refined_plate, self.timestamp, unknowns, special_thr)
-            from deepsky import match_deepsky as _match_deepsky
-            special_matches += _match_deepsky(refined_plate, unknowns, special_thr)
+        if self.timestamp:
+            from planets import match_planets as _match_planets
+            special_matches += _match_planets(
+                refined_plate, self.timestamp, unknowns, special_thr)
+        from deepsky import match_deepsky as _match_deepsky
+        special_matches += _match_deepsky(refined_plate, unknowns, special_thr)
 
         if special_matches:
             _draw_circles_with_alpha(
@@ -326,7 +325,7 @@ class Pipeline:
                 mask=draw_mask,
             )
 
-        if unknowns:
+        if d.show_unknown and unknowns:
             _draw_circles_with_alpha(
                 out_img,
                 [(int(round(u['x'])), int(round(u['y'])), 1.0) for u in unknowns],
@@ -340,10 +339,11 @@ class Pipeline:
         _draw_special_labels(out_img, special_matches, d.star_radius,
                              color=d.special_color, mask=draw_mask,
                              font_size=d.text_size)
-        _draw_unknown_labels(out_img, unknowns, refined_plate,
-                             d.star_radius,
-                             color=d.unknown_color, mask=draw_mask,
-                             font_size=d.text_size)
+        if d.show_unknown:
+            _draw_unknown_labels(out_img, unknowns, refined_plate,
+                                 d.star_radius,
+                                 color=d.unknown_color, mask=draw_mask,
+                                 font_size=d.text_size)
         if d.show_timestamp and refined_plate.timestamp:
             draw_timestamp(out_img, refined_plate.timestamp, font_size=d.text_size)
 

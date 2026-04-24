@@ -130,6 +130,15 @@
       padding-top: 4px;
     }
 
+    .cfg-heading {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #4466ff;
+      padding: 4px 0 2px;
+    }
+
     #btnResetSettings {
       margin-top: 8px;
       width: 100%;
@@ -411,18 +420,36 @@
 </div>
 
 <div id="settings-panel">
+
+  <div class="cfg-heading">Catalog</div>
   <div class="cfg-row">
-    <label>Star radius</label>
-    <input type="range" id="cfgStarRadius" min="10" max="50" value="25">
-    <span class="cfg-val" id="cfgStarRadiusVal">25</span>
+    <label>Star catalog</label>
+    <select id="cfgCatalog">
+      <option value="hipparcos">Hipparcos (118K stars)</option>
+      <option value="tycho2">Hipparcos + Tycho-2 (2M stars)</option>
+    </select>
   </div>
+
   <div class="cfg-section">
+    <div class="cfg-heading">Visibility</div>
     <div class="cfg-row">
-      <label>Constellation color</label>
+      <label>Show timestamp</label>
+      <input type="checkbox" id="cfgShowTimestamp">
+    </div>
+    <div class="cfg-row">
+      <label>Show unidentified</label>
+      <input type="checkbox" id="cfgShowUnidentified" checked>
+    </div>
+  </div>
+
+  <div class="cfg-section">
+    <div class="cfg-heading">Constellation lines</div>
+    <div class="cfg-row">
+      <label>Color</label>
       <input type="color" id="cfgConstellationColor" value="#ffb400">
     </div>
     <div class="cfg-row">
-      <label>Constellation width</label>
+      <label>Width</label>
       <input type="range" id="cfgConstellationThickness" min="1" max="10" value="4">
       <span class="cfg-val" id="cfgConstellationThicknessVal">4</span>
     </div>
@@ -430,13 +457,19 @@
       <label>Mask constellations</label>
       <input type="checkbox" id="cfgMaskConstellations">
     </div>
+  </div>
+
+  <div class="cfg-section">
+    <div class="cfg-heading">Marker settings</div>
     <div class="cfg-row">
-      <label>Show timestamp</label>
-      <input type="checkbox" id="cfgShowTimestamp">
+      <label>Radius</label>
+      <input type="range" id="cfgStarRadius" min="10" max="50" value="25">
+      <span class="cfg-val" id="cfgStarRadiusVal">25</span>
     </div>
     <div class="cfg-row">
-      <label>Show other objects</label>
-      <input type="checkbox" id="cfgShowPlanets">
+      <label>Circle width</label>
+      <input type="range" id="cfgCircleThickness" min="1" max="8" value="2">
+      <span class="cfg-val" id="cfgCircleThicknessVal">2</span>
     </div>
     <div class="cfg-row">
       <label>Text size</label>
@@ -444,39 +477,31 @@
       <span class="cfg-val" id="cfgTextSizeVal">48</span>
     </div>
   </div>
+
   <div class="cfg-section">
+    <div class="cfg-heading">Marker colors</div>
     <div class="cfg-row">
-      <label>Match color</label>
-      <input type="color" id="cfgMatchColor" value="#ffb400">
-    </div>
-    <div class="cfg-row">
-      <label>Unknown color</label>
-      <input type="color" id="cfgUnknownColor" value="#c83232">
-    </div>
-    <div class="cfg-row">
-      <label>Other objects color</label>
-      <input type="color" id="cfgSpecialColor" value="#0064ff">
-    </div>
-    <div class="cfg-row">
-      <label>Circle width</label>
-      <input type="range" id="cfgCircleThickness" min="1" max="8" value="2">
-      <span class="cfg-val" id="cfgCircleThicknessVal">2</span>
-    </div>
-  </div>
-  <div class="cfg-section">
-    <div class="cfg-row">
-      <label>Detection color</label>
+      <label>Detections</label>
       <input type="color" id="cfgDetectionColor" value="#00ff00">
     </div>
     <div class="cfg-row">
-      <label>Detection width</label>
-      <input type="range" id="cfgDetectionThickness" min="1" max="10" value="5">
-      <span class="cfg-val" id="cfgDetectionThicknessVal">5</span>
+      <label>Matched stars</label>
+      <input type="color" id="cfgMatchColor" value="#ffb400">
+    </div>
+    <div class="cfg-row">
+      <label>Other objects</label>
+      <input type="color" id="cfgSpecialColor" value="#0064ff">
+    </div>
+    <div class="cfg-row">
+      <label>Unidentified</label>
+      <input type="color" id="cfgUnknownColor" value="#c83232">
     </div>
   </div>
+
   <div class="cfg-section">
+    <div class="cfg-heading">Panorama</div>
     <div class="cfg-row">
-      <label>Panorama grid</label>
+      <label>Grid</label>
       <input type="checkbox" id="cfgPanoGrid" checked>
     </div>
     <div class="cfg-row">
@@ -504,6 +529,7 @@
     </div>
     <div style="font-size:10px;color:#556;padding:2px 0 4px">Resolution &amp; blending take effect after Reset panorama</div>
   </div>
+
   <button id="btnResetSettings">Reset to defaults</button>
 </div>
 
@@ -850,19 +876,19 @@ document.getElementById('btnResetPano').addEventListener('click', () => {
 const SETTINGS_KEY = 'starsolver_draw';
 
 const DEFAULTS = {
+  starCatalog:            'hipparcos',
   starRadius:             25,
   constellationColor:     '#ffb400',
   constellationThickness: 4,
   maskConstellations:     false,
   showTimestamp:          false,
-  showPlanets:            false,
+  showUnidentified:       true,
   textSize:               48,
   matchColor:             '#ffb400',
   unknownColor:           '#c83232',
   specialColor:           '#0064ff',
   circleThickness:        2,
   detectionColor:         '#00ff00',
-  detectionThickness:     5,
 };
 
 function hexToRgb(hex) {
@@ -901,11 +927,8 @@ function applySettings(s) {
   d.unknown_color    = hexAsTuple(s.unknownColor);
   d.circle_thickness = s.circleThickness;
 
-  document.getElementById('cfgDetectionColor').value              = s.detectionColor;
-  document.getElementById('cfgDetectionThickness').value          = s.detectionThickness;
-  document.getElementById('cfgDetectionThicknessVal').textContent = s.detectionThickness;
-  d.detection_color     = hexAsTuple(s.detectionColor);
-  d.detection_thickness = s.detectionThickness;
+  document.getElementById('cfgDetectionColor').value = s.detectionColor;
+  d.detection_color = hexAsTuple(s.detectionColor);
 
   document.getElementById('cfgMaskConstellations').checked = s.maskConstellations;
   d.mask_constellations = s.maskConstellations;
@@ -913,8 +936,10 @@ function applySettings(s) {
   document.getElementById('cfgShowTimestamp').checked = s.showTimestamp;
   d.show_timestamp = s.showTimestamp;
 
-  document.getElementById('cfgShowPlanets').checked = s.showPlanets || false;
-  d.show_planets = s.showPlanets || false;
+  document.getElementById('cfgShowUnidentified').checked = s.showUnidentified !== false;
+  d.show_unknown = s.showUnidentified !== false;
+
+  document.getElementById('cfgCatalog').value = s.starCatalog || 'hipparcos';
 
   document.getElementById('cfgSpecialColor').value = s.specialColor;
   d.special_color = hexAsTuple(s.specialColor);
@@ -922,6 +947,21 @@ function applySettings(s) {
   document.getElementById('cfgTextSize').value         = s.textSize;
   document.getElementById('cfgTextSizeVal').textContent = s.textSize;
   d.text_size = s.textSize;
+}
+
+async function loadExtendedCatalog() {
+  try {
+    setStatus('Downloading extended star catalog (17 MB)…');
+    pyodide.FS.writeFile('/ss/tycho2_extended.npz',
+                         await fetchBinary(`${CDN_SS}/tycho2_extended.npz`));
+    await pyodide.runPythonAsync(
+      `import catalog; catalog.set_catalog_path('/ss/tycho2_extended.npz')`);
+    setStatus('Star catalog: Hipparcos + Tycho-2 (2M stars).');
+  } catch (err) {
+    setStatus('Extended catalog download failed: ' + (err.message || err));
+    const s = loadSettings(); s.starCatalog = 'hipparcos'; saveSettings(s);
+    document.getElementById('cfgCatalog').value = 'hipparcos';
+  }
 }
 
 function initSettings() {
@@ -948,8 +988,6 @@ function initSettings() {
   wireSlider('cfgStarRadius',             'cfgStarRadiusVal',             'starRadius',             v => pipeline.config.draw.star_radius             = v);
   wireSlider('cfgConstellationThickness', 'cfgConstellationThicknessVal', 'constellationThickness', v => pipeline.config.draw.constellation_thickness = v);
   wireSlider('cfgCircleThickness',        'cfgCircleThicknessVal',        'circleThickness',        v => pipeline.config.draw.circle_thickness        = v);
-  wireSlider('cfgDetectionThickness',     'cfgDetectionThicknessVal',     'detectionThickness',     v => pipeline.config.draw.detection_thickness     = v);
-
   wireColor('cfgConstellationColor', 'constellationColor', v => pipeline.config.draw.constellation_color = v);
 
   document.getElementById('cfgMaskConstellations').addEventListener('change', e => {
@@ -962,9 +1000,9 @@ function initSettings() {
     const s = loadSettings(); s.showTimestamp = e.target.checked; saveSettings(s);
   });
 
-  document.getElementById('cfgShowPlanets').addEventListener('change', e => {
-    pipeline.config.draw.show_planets = e.target.checked;
-    const s = loadSettings(); s.showPlanets = e.target.checked; saveSettings(s);
+  document.getElementById('cfgShowUnidentified').addEventListener('change', e => {
+    pipeline.config.draw.show_unknown = e.target.checked;
+    const s = loadSettings(); s.showUnidentified = e.target.checked; saveSettings(s);
   });
 
   wireSlider('cfgTextSize', 'cfgTextSizeVal', 'textSize', v => pipeline.config.draw.text_size = v);
@@ -974,6 +1012,17 @@ function initSettings() {
   wireColor('cfgSpecialColor',   'specialColor',   v => pipeline.config.draw.special_color   = v);
   wireColor('cfgDetectionColor', 'detectionColor', v => pipeline.config.draw.detection_color = v);
 
+  document.getElementById('cfgCatalog').addEventListener('change', async e => {
+    const val = e.target.value;
+    const s = loadSettings(); s.starCatalog = val; saveSettings(s);
+    if (val === 'tycho2') {
+      await loadExtendedCatalog();
+    } else {
+      await pyodide.runPythonAsync(`import catalog; catalog.set_catalog_path(None)`);
+      setStatus('Star catalog: Hipparcos.');
+    }
+  });
+
   document.getElementById('btnResetSettings').addEventListener('click', () => {
     localStorage.removeItem(SETTINGS_KEY);
     localStorage.removeItem(PANO_KEY);
@@ -982,6 +1031,7 @@ function initSettings() {
     document.getElementById('cfgPanoCons').value    = PANO_DEFAULTS.constellations;
     document.getElementById('cfgPanoRes').value     = PANO_DEFAULTS.resolution.toString();
     document.getElementById('cfgPanoBlend').value   = PANO_DEFAULTS.blend;
+    pyodide.runPythonAsync(`import catalog; catalog.set_catalog_path(None)`);
   });
 
   // Panorama config (takes effect on next View panorama)
@@ -1081,6 +1131,11 @@ pano     = Panorama(width=${_initPs.resolution}, blend='${_initPs.blend}')
     pano     = pyodide.globals.get('pano');
     initSettings();
     loadImageStore();
+
+    if (loadSettings().starCatalog === 'tycho2') {
+      setProgress(92);
+      await loadExtendedCatalog();
+    }
 
     setProgress(100);
     await sleep(300);
