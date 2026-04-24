@@ -91,21 +91,10 @@ def plate_solve(stars: List[Dict], image_width: int, image_height: int,
 
         ms = result.get('matched_stars')
         if ms is not None and len(ms) > 0:
-            import catalog as _cat
-            from catalog import _CONS_NAMES
+            from catalog import get_constellation
             ms = np.asarray(ms, dtype=np.float64)   # (M, 2): [[ra_deg, dec_deg], ...]
-            ra_rad_cat, dec_rad_cat, _, _, _ = _cat._get_hip_catalog()
-
-            # Vectorised nearest-neighbour lookup into the full catalog
-            ra_q  = np.radians(ms[:, 0])[:, None]
-            dec_q = np.radians(ms[:, 1])[:, None]
-            dra   = ra_rad_cat[None, :] - ra_q
-            ddec  = dec_rad_cat[None, :] - dec_q
-            dist2 = (dra * np.cos(dec_q)) ** 2 + ddec ** 2
-            cat_idx = np.argmin(dist2, axis=1)
-
-            cons_set = set(_cat._hip_cons[cat_idx].tolist())
-            out['constellations'] = sorted(_CONS_NAMES[c] for c in cons_set)
+            cons_names = get_constellation(ms[:, 0], ms[:, 1])
+            out['constellations'] = sorted(set(c for c in cons_names if c != 'Unknown'))
             out['dec_min'] = round(float(ms[:, 1].min()), 2)
             out['dec_max'] = round(float(ms[:, 1].max()), 2)
 

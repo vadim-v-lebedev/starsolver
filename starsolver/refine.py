@@ -18,7 +18,7 @@ from typing import List, Dict
 
 from minicv import project_points
 from plate import Plate
-from catalog import _get_hip_catalog, _STAR_NAMES, _CONS_NAMES, _get_hip_id_to_cons
+from catalog import _get_hip_catalog, _STAR_NAMES, get_constellation
 
 
 PHOT_SLOPE = 0.7
@@ -167,8 +167,6 @@ def _build_result(plate: Plate, v_cel: np.ndarray,
 
     ra_deg, dec_deg, roll_deg = plate.radec_roll
 
-    id_to_cons = _get_hip_id_to_cons()
-    cons_set   = set()
     dec_vals   = []
 
     matched_stars = []
@@ -186,12 +184,15 @@ def _build_result(plate: Plate, v_cel: np.ndarray,
             'y':      float(det_y[di]),
         })
         matched_yx.append([float(det_y[di]), float(det_x[di])])
-        c = id_to_cons.get(hip_id)
-        if c is not None:
-            cons_set.add(c)
         dec_vals.append(dec_val)
 
-    constellations = sorted(_CONS_NAMES[c] for c in cons_set)
+    if matched_stars:
+        ra_arr  = np.array([s['ra']  for s in matched_stars])
+        dec_arr = np.array([s['dec'] for s in matched_stars])
+        cons_names   = get_constellation(ra_arr, dec_arr)
+        constellations = sorted(set(c for c in cons_names if c != 'Unknown'))
+    else:
+        constellations = []
     dec_min = round(min(dec_vals), 2) if dec_vals else 0.0
     dec_max = round(max(dec_vals), 2) if dec_vals else 0.0
 

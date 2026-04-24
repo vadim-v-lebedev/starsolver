@@ -387,10 +387,10 @@
   </div>
   <div id="achConsList"></div>
   <div class="ach-row" style="border-top:1px solid #1a1a30; border-bottom:none; margin-top:4px">
-    <span class="ach-label">Planets observed</span>
-    <span class="ach-big"><span id="achPlanetCount">0</span><span class="ach-dim">/7</span></span>
+    <span class="ach-label">Other objects observed</span>
+    <span class="ach-big"><span id="achSpecialCount">0</span><span class="ach-dim">/117</span></span>
   </div>
-  <div id="achPlanetList" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 0 6px"></div>
+  <div id="achSpecialList" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 0 6px"></div>
   <div class="ach-row" style="border-top:1px solid #1a1a30; border-bottom:none; margin-top:4px">
     <span class="ach-label">Faintest object</span>
     <span class="ach-big" id="achFaintest">—</span>
@@ -435,7 +435,7 @@
       <input type="checkbox" id="cfgShowTimestamp">
     </div>
     <div class="cfg-row">
-      <label>Show planets</label>
+      <label>Show other objects</label>
       <input type="checkbox" id="cfgShowPlanets">
     </div>
     <div class="cfg-row">
@@ -454,7 +454,7 @@
       <input type="color" id="cfgUnknownColor" value="#c83232">
     </div>
     <div class="cfg-row">
-      <label>Planet color</label>
+      <label>Other objects color</label>
       <input type="color" id="cfgSpecialColor" value="#0064ff">
     </div>
     <div class="cfg-row">
@@ -681,9 +681,12 @@ const CONS_ALL = [
 const ACH_KEY = 'starsolver_ach';
 
 function loadAch() {
-  try { return { images: 0, imageFiles: [], constellations: [], faintest: null,
-                 ...JSON.parse(localStorage.getItem(ACH_KEY) || '{}') }; }
-  catch { return { images: 0, imageFiles: [], constellations: [], faintest: null }; }
+  const defaults = { images: 0, imageFiles: [], constellations: [], specials: [], faintest: null };
+  try {
+    const a = { ...defaults, ...JSON.parse(localStorage.getItem(ACH_KEY) || '{}') };
+    if (a.planets && !a.specials.length) { a.specials = a.planets; delete a.planets; saveAch(a); }
+    return a;
+  } catch { return defaults; }
 }
 function saveAch(a) { localStorage.setItem(ACH_KEY, JSON.stringify(a)); }
 
@@ -707,7 +710,7 @@ function loadImageStore() {
   } catch {}
 }
 
-function updateAchievements({ constellations, planets, faintest, imageFile } = {}) {
+function updateAchievements({ constellations, specials, faintest, imageFile } = {}) {
   const a = loadAch();
   if (!a.imageFiles) a.imageFiles = [];
 
@@ -720,10 +723,10 @@ function updateAchievements({ constellations, planets, faintest, imageFile } = {
     constellations.forEach(c => seen.add(c));
     a.constellations = [...seen];
   }
-  if (planets && planets.length) {
-    const seen = new Set(a.planets || []);
-    planets.forEach(p => seen.add(p));
-    a.planets = [...seen];
+  if (specials && specials.length) {
+    const seen = new Set(a.specials || []);
+    specials.forEach(s => seen.add(s));
+    a.specials = [...seen];
   }
   if (faintest != null && (a.faintest === null || faintest > a.faintest)) {
     a.faintest = faintest;
@@ -783,13 +786,14 @@ function renderAchievements() {
     el.classList.toggle('seen', seen.has(el.dataset.cons));
   });
 
-  // Planets
-  const seenPlanets = new Set(a.planets || []);
-  document.getElementById('achPlanetCount').textContent = seenPlanets.size;
+  // Other objects (planets + Messier)
+  const seenSpecials = new Set(a.specials || []);
+  document.getElementById('achSpecialCount').textContent = seenSpecials.size;
   const ALL_PLANETS = ['Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune'];
-  const pList = document.getElementById('achPlanetList');
-  pList.innerHTML = ALL_PLANETS.map(p =>
-    `<span class="cons-tag${seenPlanets.has(p) ? ' seen' : ''}">${p}</span>`
+  const ALL_MESSIER = Array.from({length: 110}, (_, i) => `M${i + 1}`);
+  const sList = document.getElementById('achSpecialList');
+  sList.innerHTML = [...ALL_PLANETS, ...ALL_MESSIER].map(s =>
+    `<span class="cons-tag${seenSpecials.has(s) ? ' seen' : ''}">${s}</span>`
   ).join('');
 
   // Processed images (session)
@@ -1021,7 +1025,7 @@ const CDN_T3  = 'https://cdn.jsdelivr.net/gh/vadim-v-lebedev/tetra3@master/tetra
 
 const SS_FILES = ['pipeline.py','detector.py','solver.py','refine.py',
                   'plate.py','draw.py','catalog.py','minicv.py','config.py',
-                  'panorama.py','planets.py'];
+                  'panorama.py','planets.py','deepsky.py'];
 const T3_FILES = ['__init__.py','tetra3.py'];
 
 async function initPyodide() {
@@ -1042,6 +1046,10 @@ async function initPyodide() {
     }
     pyodide.FS.writeFile('/ss/DejaVuSans.ttf',
                          await fetchBinary(`${CDN_SS}/DejaVuSans.ttf`));
+    pyodide.FS.writeFile('/ss/messier.tsv',
+                         await fetchText(`${CDN_SS}/messier.tsv`));
+    pyodide.FS.writeFile('/ss/constellation_borders.npz',
+                         await fetchBinary(`${CDN_SS}/constellation_borders.npz`));
 
     setStatus('Fetching tetra3…');
     pyodide.FS.mkdir('/ss/tetra3');
@@ -1257,18 +1265,18 @@ btnRefine.addEventListener('click', async () => {
       const unkn    = r.get('unknowns');
       const lim     = r.get('mag_limit').toFixed(1);
       const t       = (r.get('T_refine') / 1000).toFixed(1);
-      const cons    = (r.get('constellations') ?? '').toString();
-      const planets = (r.get('planets')        ?? '').toString();
+      const cons     = (r.get('constellations') ?? '').toString();
+      const specials = (r.get('specials')       ?? '').toString();
       r.destroy();
 
       showImage(pyodide.FS.readFile(outputPath));
       updateAchievements({
-        constellations: cons    ? cons.split(', ')    : [],
-        planets:        planets ? planets.split(', ') : [],
+        constellations: cons     ? cons.split(', ')     : [],
+        specials:       specials ? specials.split(', ') : [],
         faintest: parseFloat(lim), imageFile: currentImageFile,
       });
       const unkStr = unkn > 0 ? `  ${unkn} unidentified` : '';
-      const plStr  = planets   ? `  ${planets}` : '';
+      const plStr  = specials   ? `  ${specials}` : '';
       let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} id  lim=${lim}m  ${t}s${unkStr}${plStr}`;
       if (cons) msg += `\n${cons}`;
       setStatus(msg);

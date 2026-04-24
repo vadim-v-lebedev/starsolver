@@ -209,21 +209,11 @@ CONSTELLATIONS: Dict[str, str] = {
     'Vul': 'Vulpecula',
 }
 
-# Sorted list of full names — index matches the 'cons' field in hip.npz
-_CONS_NAMES: list = sorted(CONSTELLATIONS.values())
-
-
-# ── Lazy-loaded catalog state ─────────────────────────────────────────────────
-
-_hip_coords:     Optional[Dict[int, Tuple[float, float]]] = None
-_hip_catalog:    Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]] = None
-_hip_ids:        Optional[np.ndarray] = None
-_hip_cons:       Optional[np.ndarray] = None
-_hip_id_to_cons: Optional[Dict[int, int]] = None
+from functools import cache
+import os
 
 
 def _resolve_catalog_path(catalog_path: Optional[str]) -> str:
-    import os
     if catalog_path and os.path.exists(catalog_path):
         return catalog_path
     default = os.path.join(os.path.dirname(__file__), 'hip.npz')
@@ -233,67 +223,77 @@ def _resolve_catalog_path(catalog_path: Optional[str]) -> str:
         "hip.npz not found. Pass catalog_path= or place it next to catalog.py")
 
 
+@cache
 def _load_catalog(catalog_path: Optional[str] = None):
-    """Load star catalog and populate module-level caches."""
-    global _hip_coords, _hip_catalog, _hip_ids, _hip_cons, _hip_id_to_cons
+    """Load and return (ra_rad, dec_rad, mag, v_cel, hip_ids, coords). Cached."""
     data    = np.load(_resolve_catalog_path(catalog_path))
-    hip_ids = data['hip']
+    hip_ids = data['hip'].astype(np.int32)
     ra_deg  = data['ra'].astype(np.float64)
     dec_deg = data['dec'].astype(np.float64)
     mag     = data['mag'].astype(np.float64)
-
     ra_rad  = np.radians(ra_deg)
     dec_rad = np.radians(dec_deg)
-    v_cel = np.column_stack([
+    v_cel   = np.column_stack([
         np.cos(dec_rad) * np.cos(ra_rad),
         np.cos(dec_rad) * np.sin(ra_rad),
         np.sin(dec_rad),
     ])
-    _hip_ids     = hip_ids.astype(np.int32)
-    _hip_catalog = (ra_rad, dec_rad, mag, v_cel, _hip_ids)
-    _hip_cons    = data['cons'].astype(np.int32)
-    _hip_id_to_cons = {int(h): int(c) for h, c in zip(_hip_ids, _hip_cons)}
-
-    coords = {}
-    for i, hid in enumerate(hip_ids):
-        if int(hid) in _ALL_HIP_IDS:
-            coords[int(hid)] = (float(ra_deg[i]), float(dec_deg[i]))
-    _hip_coords = coords
+    coords = {int(hid): (float(ra_deg[i]), float(dec_deg[i]))
+              for i, hid in enumerate(hip_ids) if int(hid) in _ALL_HIP_IDS}
+    return ra_rad, dec_rad, mag, v_cel, hip_ids, coords
 
 
 def _get_hip_catalog(mag_limit: Optional[float] = None
                      ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Return (ra_rad, dec_rad, mag, v_cel, hip_ids), optionally filtered by mag_limit."""
-    if _hip_catalog is None:
-        _load_catalog()
+    ra_rad, dec_rad, mag, v_cel, hip_ids, _ = _load_catalog()
     if mag_limit is None:
-        return _hip_catalog
-    ra_rad, dec_rad, mag, v_cel, hip_ids = _hip_catalog
+        return ra_rad, dec_rad, mag, v_cel, hip_ids
     sel = mag <= mag_limit
     return ra_rad[sel], dec_rad[sel], mag[sel], v_cel[sel], hip_ids[sel]
 
 
 def _get_hip_coords() -> Dict[int, Tuple[float, float]]:
-    if _hip_coords is None:
-        _load_catalog()
-    return _hip_coords
-
-
-def _get_hip_id_to_cons() -> Dict[int, int]:
-    """Return {hip_id: cons_index} mapping for the full catalog."""
-    if _hip_id_to_cons is None:
-        _load_catalog()
-    return _hip_id_to_cons
+    return _load_catalog()[-1]
 
 
 def _hip_id_for_radec(ra_deg: float, dec_deg: float) -> int:
     """Return the HIP ID of the catalog star nearest to (ra_deg, dec_deg)."""
-    if _hip_catalog is None:
-        _load_catalog()
-    ra_rad_arr, dec_rad_arr, _, _, _ = _hip_catalog
+    ra_rad_arr, dec_rad_arr, _, _, hip_ids, _ = _load_catalog()
     ra_r  = np.radians(ra_deg)
     dec_r = np.radians(dec_deg)
     dra   = ra_rad_arr - ra_r
     ddec  = dec_rad_arr - dec_r
     dist2 = (dra * np.cos(dec_r)) ** 2 + ddec ** 2
-    return int(_hip_ids[np.argmin(dist2)])
+    return int(hip_ids[np.argmin(dist2)])
+
+
+@cache
+def _load_cons_borders():
+    """Load and return (table, names) for constellation boundary lookup. Cached."""
+    path = os.path.join(os.path.dirname(__file__), 'constellation_borders.npz')
+    cb = np.load(path)
+    return cb['table'], cb['names']
+
+
+def get_constellation(ra: np.ndarray, dec: np.ndarray) -> list:
+    """Return constellation name for each (ra, dec) pair (degrees, J2000).
+
+    ra and dec may be plain Python floats or numpy arrays.
+    Unmatched points return 'Unknown'.
+    """
+    table, names = _load_cons_borders()
+
+    ra  = np.atleast_1d(np.asarray(ra,  dtype=np.float64))
+    dec = np.atleast_1d(np.asarray(dec, dtype=np.float64))
+
+    idx = -np.ones(len(ra), dtype=int)
+    for i, row in enumerate(table):
+        ral, rau, decl = row
+        unmatched = idx == -1
+        if not np.any(unmatched):
+            break
+        mask = unmatched & (dec > decl) & (ra >= ral) & (ra < rau)
+        idx[mask] = i
+
+    return [str(names[i]) if i >= 0 else 'Unknown' for i in idx]
