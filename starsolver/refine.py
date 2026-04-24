@@ -254,8 +254,8 @@ def refine(plate: Plate, stars: List[Dict],
     mag_limit = 5.0
     ra_rad, dec_rad, mag, v_cel, hip_ids_arr = _get_hip_catalog(mag_limit)
 
-    fit_k1 = n_det >= 15
-    fit_k2 = n_det >= 50
+    fit_k1 = n_det >= 10
+    fit_k2 = n_det >= 15
 
     det_x     = np.array([s['x']          for s in stars], dtype=np.float64)
     det_y     = np.array([s['y']          for s in stars], dtype=np.float64)
