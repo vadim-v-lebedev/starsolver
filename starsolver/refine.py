@@ -18,7 +18,7 @@ from typing import List, Dict
 
 from minicv import project_points
 from plate import Plate
-from catalog import _get_hip_catalog, _STAR_NAMES, get_constellation
+from catalog import _get_hip_catalog, _get_star_names, _get_all_bayer_names, get_constellation
 
 
 PHOT_SLOPE = 0.7
@@ -75,6 +75,15 @@ def _find_candidates(di, px_vis, py_vis, mag_vis, det_x, det_y, det_logb,
     d2_w = dist2[within]
     if phot_sig < 1e8:
         eff_mag = _effective_mags(within, px_vis, py_vis, mag_vis)
+        # Exclude candidates whose effective magnitude is dominated by a
+        # brighter companion: a 10m star within 5px of Capella gets eff_mag≈0,
+        # passes the photometric check, and can beat Capella on distance alone.
+        dominated = (mag_vis[within] - eff_mag) > 2.0
+        within   = within[~dominated]
+        d2_w     = d2_w[~dominated]
+        eff_mag  = eff_mag[~dominated]
+        if len(within) == 0:
+            return None
         pred_mag = (det_logb[di] - phot_b) / PHOT_SLOPE
         resids = pred_mag - eff_mag
         lims = np.where(resids > 0, 5.0 * phot_sig, 3.0 * phot_sig)
@@ -171,17 +180,19 @@ def _build_result(plate: Plate, v_cel: np.ndarray,
 
     matched_stars = []
     matched_yx    = []
-    for di, ci in zip(mdi, mci):
+    for i, (di, ci) in enumerate(zip(mdi, mci)):
         hip_id  = int(hip_ids_arr[ci])
         dec_val = float(np.degrees(dec_rad[ci]))
         matched_stars.append({
-            'hip_id': hip_id,
-            'name':   _STAR_NAMES.get(hip_id, ''),
-            'ra':     float(np.degrees(ra_rad[ci])),
-            'dec':    dec_val,
-            'mag':    float(mag[ci]),
-            'x':      float(det_x[di]),
-            'y':      float(det_y[di]),
+            'hip_id':      hip_id,
+            'name':        _get_all_bayer_names().get(hip_id, ''),
+            'ra':          float(np.degrees(ra_rad[ci])),
+            'dec':         dec_val,
+            'mag':         round(float(mag[ci]), 2),
+            'pred_mag':    round(float((det_logb[di] - phot_b) / PHOT_SLOPE), 2),
+            'x':           float(det_x[di]),
+            'y':           float(det_y[di]),
+            'pixel_error': round(float(res_f[i]), 1),
         })
         matched_yx.append([float(det_y[di]), float(det_x[di])])
         dec_vals.append(dec_val)

@@ -1,0 +1,111 @@
+messier,type,ra,dec
+M1,Supernova remnant,05h 34m 31.9s,+22deg 00' 52.2"
+M2,Globular cluster,21h 33m 27.0s,-00deg 49' 23.7"
+M3,Globular cluster,13h 42m 11.6s,+28deg 22' 38.2"
+M4,Globular cluster,16h 23m 35.2s,-26deg 31' 32.7"
+M5,Globular cluster,15h 18m 33.2s,+02deg 04' 51.7"
+M6,Open cluster,17h 40.1m,-32deg 13'
+M7,Open cluster,17h 53m 51.2s,-34deg 47' 34"
+M8,Nebula with cluster,18h 03m 37s,-24deg 23' 12"
+M9,Globular cluster,17h 19m 11.8s,-18deg 30' 58.5"
+M10,Globular cluster,16h 57m 8.9s,-04deg 05' 58.1"
+M11,Open cluster,18h 51.1m,-06deg 16'
+M12,Globular cluster,16h 47m 14.2s,-01deg 56' 54.7"
+M13,Globular cluster,16h 41m 41.2s,+36deg 27' 35.5"
+M14,Globular cluster,17h 37m 36.2s,-03deg 14' 45.3"
+M15,Globular cluster,21h 29m 58.3s,+12deg 10' 01.2"
+M16,H II region nebula with cluster,18h 18m 48s,-13deg 49'
+M17,H II region nebula with cluster,18h 20m 26s,-16deg 10' 36"
+M18,Open cluster,18h 19.9m,-17deg 08'
+M19,Globular cluster,17h 02m 37.7s,-26deg 16' 04.6"
+M20,H II region nebula with cluster,18h 02m 23s,-23deg 01' 48"
+M21,Open cluster,18h 04.6m,-22deg 30'
+M22,Globular cluster,18h 36m 23.9s,-23deg 54' 17.1"
+M23,Open cluster,17h 56.8m,-19deg 01'
+M24,Milky Way star cloud,18h 17m,-18deg 33'
+M25,Open cluster,18h 31.6m,-19deg 15'
+M26,Open cluster,18h 45.2m,-09deg 24'
+M27,Planetary nebula,19h 59m 36.3s,+22deg 43' 16.1"
+M28,Globular cluster,18h 24m 32.9s,-24deg 52' 11.4"
+M29,Open cluster,20h 23m 56s,+38deg 31' 24"
+M30,Globular cluster,21h 40m 22.1s,-23deg 10' 47.5"
+M31,Spiral galaxy,00h 42m 44.3s,+41deg 16' 09"
+M32,Dwarf elliptical galaxy,00h 42m 41.8s,+40deg 51' 55"
+M33,Spiral galaxy,01h 33m 50.0s,+30deg 39' 36.7"
+M34,Open cluster,02h 42.1m,+42deg 46'
+M35,Open cluster,06h 09.1m,+24deg 21'
+M36,Open cluster,05h 36m 12s,+34deg 08' 04"
+M37,Open cluster,05h 52m 18s,+32deg 33' 02"
+M38,Open cluster,05h 28m 42s,+35deg 51' 18"
+M39,Open cluster,21h 31m 42s,+48deg 26' 00"
+M40,Optical Double,12h 22m 12.5s,+58deg 04' 59"
+M41,Open cluster,06h 46.0m,-20deg 46'
+M42,H II region nebula,05h 35m 17.3s,-05deg 23' 28"
+M43,H II region nebula (part of the Orion Nebula),05h 35.6m,-05deg 16'
+M44,Open cluster,08h 40.4m,+19deg 59'
+M45,Open cluster,03h 47m 24s,+24deg 07' 00"
+M46,Open cluster,07h 41.8m,-14deg 49'
+M47,Open cluster,07h 36.6m,-14deg 30'
+M48,Open cluster,08h 13.7m,-05deg 45'
+M49,Elliptical galaxy,12h 29m 46.7s,+08deg 00' 02"
+M50,Open cluster,07h 03.2m,-08deg 20'
+M51,Spiral galaxy,13h 29m 52.7s,+47deg 11' 43"
+M52,Open cluster,23h 24.2m,+61deg 35'
+M53,Globular cluster,13h 12m 55.3s,+18deg 10' 05.4"
+M54,Globular cluster,18h 55m 03.3s,-30deg 28' 47.5"
+M55,Globular cluster,19h 39m 59.7s,-30deg 57' 53.1"
+M56,Globular cluster,19h 16m 35.6s,+30deg 11' 00.5"
+M57,Planetary nebula,18h 53m 35.1s,+33deg 01' 45.0"
+M58,Barred Spiral galaxy,12h 37m 43.5s,+11deg 49' 05"
+M59,Elliptical galaxy,12h 42m 02.3s,+11deg 38' 49"
+M60,Elliptical galaxy,12h 43m 39.6s,+11deg 33' 09"
+M61,Spiral galaxy,12h 21m 54.9s,+04deg 28' 25"
+M62,Globular cluster,17h 01m 12.6s,-30deg 06' 44.5"
+M63,Spiral galaxy,13h 15m 49.3s,+42deg 01' 45"
+M64,Spiral galaxy,12h 56m 43.7s,+21deg 40' 58"
+M65,Barred Spiral galaxy,11h 18m 55.9s,+13deg 05' 32"
+M66,Barred Spiral galaxy,11h 20m 15.0s,+12deg 59' 30"
+M67,Open cluster,08h 51.3m,+11deg 49'
+M68,Globular cluster,12h 39m 28.0s,-26deg 44' 38.6"
+M69,Globular cluster,18h 31m 23.1s,-32deg 20' 53.1"
+M70,Globular cluster,18h 43m 12.8s,-32deg 17' 31.6"
+M71,Globular cluster,19h 53m 46.5s,+18deg 46' 45.1"
+M72,Globular cluster,20h 53m 27.7s,-12deg 32' 14.3"
+M73,Asterism,20h 58m 54s,-12deg 38'
+M74,Spiral galaxy,01h 36m 41.8s,+15deg 47' 01"
+M75,Globular cluster,20h 06m 04.8s,-21deg 55' 16.2"
+M76,Planetary nebula,01h 42.4m,+51deg 34' 31"
+M77,Spiral galaxy,02h 42m 40.7s,-00deg 00' 48"
+M78,Diffuse nebula,05h 46m 46.7s,+00deg 00' 50"
+M79,Globular cluster,05h 24m 10.6s,-24deg 31' 27.3"
+M80,Globular cluster,16h 17m 02.4s,-22deg 58' 33.9"
+M81,Spiral galaxy,09h 55m 33.2s,+69deg 03' 55"
+M82,Starburst galaxy,09h 55m 52.2s,+69deg 40' 47"
+M83,Barred Spiral galaxy,13h 37m 00.9s,-29deg 51' 57"
+M84,Lenticular galaxy,12h 25m 03.7s,+12deg 53' 13"
+M85,Lenticular galaxy,12h 25m 24.0s,+18deg 11' 28"
+M86,Lenticular galaxy,12h 26m 11.7s,+12deg 56' 46"
+M87,Elliptical galaxy,12h 30m 49.4s,+12deg 23' 28.0"
+M88,Spiral galaxy,12h 31m 59.2s,+14deg 25' 14"
+M89,Elliptical galaxy,12h 35m 39.8s,+12deg 33' 23"
+M90,Spiral galaxy,12h 36m 49.8s,+13deg 09' 46"
+M91,Barred Spiral galaxy,12h 35m 26.4s,+14deg 29' 47"
+M92,Globular cluster,17h 17m 07.4s,+43deg 08' 09.4"
+M93,Open cluster,07h 44.6m,-23deg 52'
+M94,Spiral galaxy,12h 50m 53.1s,+41deg 07' 14"
+M95,Barred Spiral galaxy,10h 43m 57.7s,+11deg 42' 14"
+M96,Spiral galaxy,10h 46m 45.7s,+11deg 49' 12"
+M97,Planetary nebula,11h 14m 47.7s,+55deg 01' 08.5"
+M98,Spiral galaxy,12h 13m 48.3s,+14deg 54' 01.7"
+M99,Spiral galaxy,12h 18m 49.6s,+14deg 24' 59"
+M100,Spiral galaxy,12h 22m 54.9s,+15deg 49' 21"
+M101,Spiral galaxy,14h 03m 12.6s,+54deg 20' 57"
+M102,Lenticular galaxy,15h 06m 29.5s,+55deg 45' 48"
+M103,Open cluster,01h 33.2m,+60deg 42'
+M104,Spiral galaxy,12h 39m 59.4s,-11deg 37' 23"
+M105,Elliptical galaxy,10h 47m 49.6s,+12deg 34' 54"
+M106,Spiral galaxy,12h 18m 57.5s,+47deg 18' 14"
+M107,Globular cluster,16h 32m 31.9s,-13deg 03' 13.6"
+M108,Barred Spiral galaxy,11h 11m 31.0s,+55deg 40' 27"
+M109,Barred Spiral galaxy,11h 57m 36.0s,+53deg 22' 28"
+M110,Dwarf elliptical galaxy,00h 40m 22.1s,+41deg 41' 07"

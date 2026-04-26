@@ -2,8 +2,8 @@
 Star catalog data and I/O.
 
 Provides:
-  - _LINES_RAW   : constellation line data (Stellarium, GPL)
-  - _STAR_NAMES  : Bayer designations keyed by HIP ID
+  - _LINES_RAW         : constellation line data (Stellarium, GPL)
+  - _get_star_names()  : Bayer designations keyed by HIP ID (lazy-loaded)
   - _get_hip_catalog()  : lazy-loaded (ra_rad, dec_rad, mag) arrays
   - _get_hip_coords()   : lazy-loaded hip_id → (ra_deg, dec_deg) dict
   - _hip_id_for_radec() : nearest catalog star to a sky position
@@ -112,67 +112,15 @@ for _row in _LINES_RAW:
     for _hip in _row[2:]:
         _ALL_HIP_IDS.add(_hip)
 
-# Bayer designations keyed by Hipparcos ID
-_STAR_NAMES: Dict[int, str] = {
-    677:    "α And",
-    746:    "β Cas",
-    3179:   "α Cas",
-    4427:   "γ Cas",
-    5447:   "β And",
-    6686:   "δ Cas",
-    7588:   "α Eri",
-    8832:   "γ Ari",
-    8886:   "ε Cas",
-    8903:   "β Ari",
-    9884:   "α Ari",
-    11767:  "α UMi",
-    14135:  "α Cet",
-    14576:  "β Per",
-    15863:  "α Per",
-    21421:  "α Tau",
-    22449:  "β Ori",
-    24436:  "γ Ori",
-    24608:  "α Aur",
-    25336:  "κ Ori",
-    25428:  "β Tau",
-    25930:  "δ Ori",
-    26311:  "ε Ori",
-    26727:  "ζ Ori",
-    27989:  "α Ori",
-    28380:  "β Aur",
-    30438:  "α Car",
-    32349:  "α CMa",
-    33579:  "ε CMa",
-    34088:  "γ Gem",
-    36188:  "β CMi",
-    36850:  "α Gem",
-    37279:  "α CMi",
-    37826:  "β Gem",
-    45238:  "ε Car",
-    49669:  "α Leo",
-    57632:  "β Leo",
-    60718:  "β Cru",
-    61084:  "α Cru",
-    65474:  "α Vir",
-    67301:  "η UMa",
-    68702:  "β Cen",
-    69673:  "α Boo",
-    71683:  "α Cen",
-    72607:  "β UMi",
-    80763:  "α Sco",
-    85670:  "β Dra",
-    87833:  "γ Dra",
-    91262:  "α Lyr",
-    92855:  "σ Sgr",
-    95947:  "β Cyg",
-    97649:  "α Aql",
-    100453: "γ Cyg",
-    102098: "α Cyg",
-    105199: "β Cep",
-    109268: "α Gru",
-    109492: "α Cep",
-    113368: "α PsA",
+_GREEK = {
+    'Alp': 'α', 'Bet': 'β', 'Gam': 'γ', 'Del': 'δ', 'Eps': 'ε',
+    'Zet': 'ζ', 'Eta': 'η', 'The': 'θ', 'Iot': 'ι', 'Kap': 'κ',
+    'Lam': 'λ', 'Mu':  'μ', 'Nu':  'ν', 'Xi':  'ξ', 'Omi': 'ο',
+    'Pi':  'π', 'Rho': 'ρ', 'Sig': 'σ', 'Tau': 'τ', 'Ups': 'υ',
+    'Phi': 'φ', 'Chi': 'χ', 'Psi': 'ψ', 'Ome': 'ω',
 }
+_SUP = {'1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵',
+        '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹'}
 
 # ── Constellation name lookup ─────────────────────────────────────────────────
 
@@ -232,6 +180,39 @@ def _resolve_catalog_path(catalog_path: Optional[str] = None) -> str:
         return default
     raise FileNotFoundError(
         "hip.npz not found. Pass catalog_path= or place it next to catalog.py")
+
+
+@cache
+def _get_all_bayer_names() -> Dict[int, str]:
+    """Load bayer.csv and return HIP → 'α Aur' for every star in the file."""
+    csv_path = os.path.join(os.path.dirname(__file__), 'bayer.csv')
+    bayer: Dict[int, str] = {}
+    with open(csv_path, encoding='utf-8') as f:
+        next(f)  # skip header
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(',')
+            if len(parts) < 3:
+                continue
+            hip, code, con = int(parts[0]), parts[1].strip(), parts[2].strip()
+            if '-' in code:
+                base, num = code.split('-', 1)
+                letter = _GREEK.get(base, base) + _SUP.get(num, num)
+            else:
+                letter = _GREEK.get(code, code)
+            bayer[hip] = f"{letter} {con}"
+    return bayer
+
+
+@cache
+def _get_star_names(mag_limit: float = 2.5) -> Dict[int, str]:
+    """Return HIP → Bayer designation for stars brighter than mag_limit (for image labels)."""
+    all_bayer = _get_all_bayer_names()
+    ra_rad, dec_rad, mag, v_cel, hip_ids = _get_hip_catalog()
+    bright = set(int(h) for h, m in zip(hip_ids, mag) if m <= mag_limit)
+    return {hip: label for hip, label in all_bayer.items() if hip in bright}
 
 
 @cache

@@ -17,10 +17,43 @@ from detector import find_stars_multiscale as find_stars
 from solver import plate_solve
 from plate import Plate
 from config import Config
+import json
 from draw import (load_image, draw_detections, draw_constellations, draw_star_names,
                   _draw_circles_with_alpha, _mag_alpha,
-                  _draw_refine_labels, _draw_unknown_labels,
-                  _draw_special_labels, draw_timestamp)
+                  _draw_refine_labels, _draw_special_labels, draw_timestamp)
+
+
+def _enrich_unknowns(plate, unknowns):
+    """Add nearest visible catalog star info to each unknown detection dict."""
+    if not unknowns:
+        return
+    from catalog import _get_hip_catalog, _get_all_bayer_names
+    ra_rad, dec_rad, mag_cat, v_cel, hip_ids = _get_hip_catalog()
+    cat_px, cat_py, in_front = plate.project_with_mask(v_cel)
+    w, h = plate.w, plate.h
+    margin = 100
+    vis = (in_front &
+           (cat_px >= -margin) & (cat_px < w + margin) &
+           (cat_py >= -margin) & (cat_py < h + margin))
+    vis_px  = cat_px[vis]
+    vis_py  = cat_py[vis]
+    vis_mag = mag_cat[vis]
+    vis_hip = hip_ids[vis]
+    vis_ra  = np.degrees(ra_rad[vis])
+    vis_dec = np.degrees(dec_rad[vis])
+    names   = _get_all_bayer_names()
+    for u in unknowns:
+        dists = np.sqrt((vis_px - u['x']) ** 2 + (vis_py - u['y']) ** 2)
+        ni    = int(np.argmin(dists))
+        hip   = int(vis_hip[ni])
+        u['nearest_hip']     = hip
+        u['nearest_name']    = names.get(hip, '')
+        u['nearest_ra']      = round(float(vis_ra[ni]),  4)
+        u['nearest_dec']     = round(float(vis_dec[ni]), 4)
+        u['nearest_mag']     = round(float(vis_mag[ni]), 2)
+        u['nearest_dist_px'] = round(float(dists[ni]),   1)
+        pm = u.get('pred_mag')
+        u['mag_diff'] = round(float(pm) - float(vis_mag[ni]), 1) if pm is not None else None
 
 
 class Pipeline:
@@ -304,6 +337,7 @@ class Pipeline:
         )
 
         unknowns = result['unknown_detections']
+        _enrich_unknowns(refined_plate, unknowns)
 
         # ── special object matching (planets + deep-sky) ─────────────────
         arcsec_per_px = refined_plate.fov_deg * 3600.0 / refined_plate.w
@@ -339,17 +373,37 @@ class Pipeline:
         _draw_special_labels(out_img, special_matches, d.star_radius,
                              color=d.special_color, mask=draw_mask,
                              font_size=d.text_size)
-        if d.show_unknown:
-            _draw_unknown_labels(out_img, unknowns, refined_plate,
-                                 d.star_radius,
-                                 color=d.unknown_color, mask=draw_mask,
-                                 font_size=d.text_size)
         if d.show_timestamp and refined_plate.timestamp:
             draw_timestamp(out_img, refined_plate.timestamp, font_size=d.text_size)
 
         Image.fromarray(out_img).save(output_path, quality=95)
 
         faintest_mag = max((s['mag'] for s in result['matched_stars']), default=0.0)
+
+        for s in result['matched_stars']:
+            obs = refined_plate.pixel_to_radec(s['x'], s['y'])
+            s['obs_ra']  = round(obs[0], 4)
+            s['obs_dec'] = round(obs[1], 4)
+
+        for u in unknowns:
+            obs = refined_plate.pixel_to_radec(u['x'], u['y'])
+            u['obs_ra']  = round(obs[0], 4)
+            u['obs_dec'] = round(obs[1], 4)
+
+        for sp in special_matches:
+            obs = refined_plate.pixel_to_radec(sp['x'], sp['y'])
+            sp['obs_ra']  = round(obs[0], 4)
+            sp['obs_dec'] = round(obs[1], 4)
+            proj = refined_plate.radec_to_pixel(sp['ra'], sp['dec'])
+            sp['pixel_error'] = round(
+                float(np.sqrt((proj[0] - sp['x'])**2 + (proj[1] - sp['y'])**2)), 1
+            ) if proj is not None else None
+
+        objects_json = json.dumps({
+            'stars':    result['matched_stars'],
+            'unknowns': unknowns,
+            'specials': special_matches,
+        })
         return {
             'status':         'refined',
             'RA':             result['RA'],
@@ -364,6 +418,7 @@ class Pipeline:
             'constellations': ', '.join(result.get('constellations', [])),
             'dec_min':        result.get('dec_min', 0.0),
             'dec_max':        result.get('dec_max', 0.0),
+            'objects_json':   objects_json,
         }
 
 

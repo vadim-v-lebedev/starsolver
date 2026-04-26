@@ -373,6 +373,28 @@
       background: #14141f; color: #383860;
     }
     .cons-tag.seen { background: #0f1f0f; color: #50a050; }
+    #obj-popup {
+      position: fixed; z-index: 200;
+      background: rgba(12,12,20,0.93);
+      color: #ddd;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 8px;
+      padding: 10px 14px 8px;
+      font-size: 13px; line-height: 1.5;
+      max-width: 300px;
+      pointer-events: auto;
+    }
+    #obj-popup[hidden] { display: none; }
+    #obj-popup-close {
+      position: absolute; top: 4px; right: 8px;
+      background: none; border: none;
+      color: #888; font-size: 16px; line-height: 1;
+      cursor: pointer; padding: 0 2px;
+    }
+    #obj-popup-close:hover { color: #ddd; }
+    #obj-popup table { border-collapse: collapse; margin-top: 5px; width: 100%; }
+    #obj-popup td { padding: 1px 0; }
+    #obj-popup td:first-child { color: #888; padding-right: 10px; white-space: nowrap; }
   </style>
 </head>
 <body>
@@ -383,6 +405,11 @@
   <img id="preview" alt="star field">
   <span id="placeholder">Pick or take an image to begin</span>
   <div id="progress-bar"></div>
+</div>
+
+<div id="obj-popup" hidden>
+  <button id="obj-popup-close">×</button>
+  <div id="obj-popup-content"></div>
 </div>
 
 <div id="achievements-panel">
@@ -594,6 +621,7 @@ let solveUnlimited       = false;
 let currentImageTimestamp = null;   // ISO string from EXIF, or null
 let detectThreshold   = 20.0;
 let currentFovEstimate = null;  // long-axis FOV from EXIF, degrees, or null
+let currentObjects     = null;  // {stars, unknowns, specials} from last refine
 
 // ── DOM ───────────────────────────────────────────────────────────────────────
 const elStatus   = document.getElementById('status');
@@ -635,6 +663,96 @@ function setBusy(on) {
   busy = on;
   if (on) setButtons({});
 }
+
+// ── object popup ──────────────────────────────────────────────────────────────
+function _rdFmt(ra, dec) {
+  const s = dec >= 0 ? '+' : '';
+  return `${ra.toFixed(2)}°&ensp;${s}${dec.toFixed(2)}°`;
+}
+
+function showPopup(obj, vpx, vpy) {
+  const popup   = document.getElementById('obj-popup');
+  const content = document.getElementById('obj-popup-content');
+
+  let title = '', catRaDec = '', catMag = '', obsRaDec = '', obsMag = '', residual = '';
+
+  if (obj._type === 'star') {
+    const idStr = obj.hip_id > 0 ? `HIP ${obj.hip_id}` : 'star (Tycho-2)';
+    title    = obj.name
+      ? `<b>${obj.name}</b>&ensp;<span style="color:#777">${idStr}</span>`
+      : `<b>${idStr}</b>`;
+    catRaDec = _rdFmt(obj.ra, obj.dec);
+    catMag   = `${obj.mag.toFixed(2)}m`;
+    obsRaDec = _rdFmt(obj.obs_ra, obj.obs_dec);
+    obsMag   = `${obj.pred_mag.toFixed(2)}m`;
+    residual = `${obj.pixel_error.toFixed(1)} px`;
+
+  } else if (obj._type === 'unknown') {
+    const nearId = obj.nearest_hip > 0 ? `HIP ${obj.nearest_hip}` : 'star (Tycho-2)';
+    const nearest = obj.nearest_name
+      ? `${obj.nearest_name} · ${nearId}`
+      : nearId;
+    title    = `<b style="color:#e06060">Unidentified</b><br><span style="color:#888">Nearest: ${nearest}</span>`;
+    catRaDec = _rdFmt(obj.nearest_ra, obj.nearest_dec);
+    catMag   = `${obj.nearest_mag.toFixed(2)}m`;
+    obsRaDec = _rdFmt(obj.obs_ra, obj.obs_dec);
+    obsMag   = `${obj.pred_mag.toFixed(2)}m`;
+    residual = `${obj.nearest_dist_px} px`;
+
+  } else {
+    const sub = obj.type ? `<br><span style="color:#888">${obj.type}</span>` : '';
+    title    = `<b>${obj.name}</b>${sub}`;
+    catRaDec = _rdFmt(obj.ra, obj.dec);
+    obsRaDec = _rdFmt(obj.obs_ra, obj.obs_dec);
+    residual = obj.pixel_error != null ? `${obj.pixel_error} px` : '—';
+  }
+
+  const magCol = (v) => v ? `<td>&ensp;${v}</td>` : '<td></td>';
+  content.innerHTML = `<div style="margin-bottom:5px">${title}</div><table>
+    <tr><td>Catalog</td><td>${catRaDec}</td>${magCol(catMag)}</tr>
+    <tr><td>Observed</td><td>${obsRaDec}</td>${magCol(obsMag)}</tr>
+    <tr><td>Residual</td><td colspan="2">${residual}</td></tr>
+  </table>`;
+
+  popup.removeAttribute('hidden');
+  const margin = 10, pw = 300, ph = 110;
+  let left = vpx + 14, top = vpy - 14;
+  if (left + pw > window.innerWidth  - margin) left = vpx - pw - 14;
+  if (top  + ph > window.innerHeight - margin) top  = vpy - ph;
+  if (top  < margin) top = margin;
+  if (left < margin) left = margin;
+  popup.style.left = `${left}px`;
+  popup.style.top  = `${top}px`;
+}
+
+function hidePopup() {
+  document.getElementById('obj-popup').setAttribute('hidden', '');
+}
+
+document.getElementById('obj-popup-close').addEventListener('click', hidePopup);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hidePopup(); });
+
+elPreview.addEventListener('click', e => {
+  if (!currentObjects) return;
+  const rect = elPreview.getBoundingClientRect();
+  const sx = elPreview.naturalWidth  / elPreview.clientWidth;
+  const sy = elPreview.naturalHeight / elPreview.clientHeight;
+  const ix = (e.clientX - rect.left) * sx;
+  const iy = (e.clientY - rect.top)  * sy;
+  const all = [
+    ...currentObjects.stars.map(s => ({...s, _type: 'star'})),
+    ...currentObjects.unknowns.map(u => ({...u, _type: 'unknown'})),
+    ...currentObjects.specials.map(sp => ({...sp, _type: 'special'})),
+  ];
+  const THRESHOLD2 = 100 * 100;
+  let best = null, bestD2 = THRESHOLD2;
+  for (const obj of all) {
+    const d2 = (obj.x - ix) ** 2 + (obj.y - iy) ** 2;
+    if (d2 < bestD2) { bestD2 = d2; best = obj; }
+  }
+  if (!best) { hidePopup(); return; }
+  showPopup(best, e.clientX, e.clientY);
+});
 
 function showImage(data) {
   if (currentBlobURL) URL.revokeObjectURL(currentBlobURL);
@@ -1067,7 +1185,8 @@ btnSettings.addEventListener('click', () => {
 // ── Pyodide initialisation ────────────────────────────────────────────────────
 // When served from localhost, load Python source from the local repo instead
 // of CDN so that edits are reflected immediately without committing.
-const _LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+const _LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+           || location.protocol === 'file:';
 const CDN_SS  = _LOCAL
   ? '../starsolver'
   : 'https://cdn.jsdelivr.net/gh/vadim-v-lebedev/starsolver@main/starsolver';
@@ -1096,8 +1215,10 @@ async function initPyodide() {
     }
     pyodide.FS.writeFile('/ss/DejaVuSans.ttf',
                          await fetchBinary(`${CDN_SS}/DejaVuSans.ttf`));
-    pyodide.FS.writeFile('/ss/messier.tsv',
-                         await fetchText(`${CDN_SS}/messier.tsv`));
+    pyodide.FS.writeFile('/ss/messier.csv',
+                         await fetchText(`${CDN_SS}/messier.csv`));
+    pyodide.FS.writeFile('/ss/bayer.csv',
+                         await fetchText(`${CDN_SS}/bayer.csv`));
     pyodide.FS.writeFile('/ss/constellation_borders.npz',
                          await fetchBinary(`${CDN_SS}/constellation_borders.npz`));
 
@@ -1161,7 +1282,9 @@ async function onImageFile(file) {
   solvedOk              = false;
   solveUnlimited        = false;
   currentImageTimestamp = null;
-  detectThreshold = 20.0;
+  detectThreshold       = 20.0;
+  currentObjects        = null;
+  hidePopup();
   btnDetect.textContent = 'Detect';
   btnSolve.textContent  = 'Solve';
   setButtons({ load: true, detect: true, settings: true, achievements: true });
@@ -1320,9 +1443,12 @@ btnRefine.addEventListener('click', async () => {
       const unkn    = r.get('unknowns');
       const lim     = r.get('mag_limit').toFixed(1);
       const t       = (r.get('T_refine') / 1000).toFixed(1);
-      const cons     = (r.get('constellations') ?? '').toString();
-      const specials = (r.get('specials')       ?? '').toString();
+      const cons        = (r.get('constellations') ?? '').toString();
+      const specials    = (r.get('specials')       ?? '').toString();
+      const objectsJson = (r.get('objects_json')   ?? '').toString();
       r.destroy();
+      currentObjects = objectsJson ? JSON.parse(objectsJson) : null;
+      hidePopup();
 
       showImage(pyodide.FS.readFile(outputPath));
       updateAchievements({

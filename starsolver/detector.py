@@ -65,11 +65,14 @@ def find_stars(gray: np.ndarray, mask: np.ndarray = None,
 
     stars = []
     for xi, yi in zip(xs, ys):
+        flux = float(flux_map[yi, xi])
+        if flux <= 0:
+            continue
         stars.append({
             "x": round(float(xi * downsample), 1),
             "y": round(float(yi * downsample), 1),
             "radius": float(r1 * downsample),
-            "brightness": round(float(flux_map[yi, xi]), 4),
+            "brightness": round(flux, 4),
         })
 
     stars.sort(key=lambda s: s["brightness"], reverse=True)

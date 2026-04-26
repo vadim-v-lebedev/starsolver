@@ -8,7 +8,7 @@ from PIL import Image, ImageDraw, ImageOps
 from typing import Dict, List, Optional, Tuple
 
 from plate import Plate
-from catalog import (_LINES_RAW, _STAR_NAMES,
+from catalog import (_LINES_RAW, _get_star_names,
                      _get_hip_coords, _get_hip_catalog, _hip_id_for_radec)
 
 
@@ -152,7 +152,7 @@ def draw_star_names(img: np.ndarray, matched_stars, matched_centroids,
     for i in range(len(matched_stars)):
         ra_deg, dec_deg = float(matched_stars[i, 0]), float(matched_stars[i, 1])
         hip_id = _hip_id_for_radec(ra_deg, dec_deg)
-        name   = _STAR_NAMES.get(hip_id)
+        name   = _get_star_names().get(hip_id)
         if name is None:
             continue
         cy_px = int(round(float(matched_centroids[i, 0])))
@@ -243,7 +243,8 @@ def _draw_refine_labels(img: np.ndarray, matched_stars: list,
                         mask: Optional[np.ndarray] = None,
                         font_size: int = 48) -> None:
     """Draw Bayer designations next to matched stars."""
-    named = [s for s in matched_stars if s['name']]
+    draw_names = _get_star_names()
+    named = [(s, draw_names[s['hip_id']]) for s in matched_stars if s['hip_id'] in draw_names]
     if not named:
         return
 
@@ -254,8 +255,7 @@ def _draw_refine_labels(img: np.ndarray, matched_stars: list,
     pil_img = Image.fromarray(img)
     draw    = ImageDraw.Draw(pil_img)
 
-    for star in named:
-        name   = star['name']
+    for star, name in named:
         px, py = int(round(star['x'])), int(round(star['y']))
         tx, ty = px + offset, py - 10
         bbox = draw.textbbox((tx, ty), name, font=font)
@@ -308,66 +308,6 @@ def _draw_special_labels(img: np.ndarray, specials: list,
         img[m] = saved[m]
 
 
-def _draw_unknown_labels(img: np.ndarray, unknowns: list,
-                         plate: Plate,
-                         star_radius: int = 25,
-                         color: Tuple = (200, 50, 50),
-                         mask: Optional[np.ndarray] = None,
-                         font_size: int = 48) -> None:
-    """Label unknown detections with nearest catalog distance and mag diff."""
-    if not unknowns:
-        return
-
-    saved = img.copy() if mask is not None else None
-    h, w = img.shape[:2]
-
-    ra_rad, dec_rad, mag_cat, _, _ = _get_hip_catalog()
-    v_cel = np.column_stack([np.cos(dec_rad) * np.cos(ra_rad),
-                             np.cos(dec_rad) * np.sin(ra_rad),
-                             np.sin(dec_rad)])
-    cat_px, cat_py, in_front = plate.project_with_mask(v_cel)
-    margin = 100
-    vis = (in_front &
-           (cat_px >= -margin) & (cat_px < w + margin) &
-           (cat_py >= -margin) & (cat_py < h + margin))
-    vis_px  = cat_px[vis]
-    vis_py  = cat_py[vis]
-    vis_mag = mag_cat[vis]
-
-    font    = _get_label_font(max(24, font_size * 2 // 3))
-    offset  = star_radius + 6
-    pil_img = Image.fromarray(img)
-    draw    = ImageDraw.Draw(pil_img)
-
-    for u in unknowns:
-        ux, uy = u['x'], u['y']
-        dists        = np.sqrt((vis_px - ux) ** 2 + (vis_py - uy) ** 2)
-        nearest_i    = int(np.argmin(dists))
-        nearest_dist = float(dists[nearest_i])
-        nearest_mag  = float(vis_mag[nearest_i])
-
-        pred_mag = u.get('pred_mag')
-        line2 = f"{pred_mag - nearest_mag:+.1f}m" if pred_mag is not None else ""
-
-        line1 = f"{nearest_dist:.1f}px"
-        px, py = int(round(ux)), int(round(uy))
-        tx, ty = px + offset, py - 10
-        bbox1 = draw.textbbox((tx, ty), line1, font=font)
-        tw = bbox1[2] - bbox1[0]
-        if tx + tw > w:
-            tx = px - offset - tw
-        if ty < 0:
-            ty = py + offset
-
-        draw.text((tx, ty), line1, font=font, fill=color)
-        if line2:
-            ty2 = ty + (bbox1[3] - bbox1[1]) + 2
-            draw.text((tx, ty2), line2, font=font, fill=color)
-
-    img[:] = np.array(pil_img)
-    if mask is not None:
-        m = mask > 128
-        img[m] = saved[m]
 
 
 # ── timestamp overlay ─────────────────────────────────────────────────────────

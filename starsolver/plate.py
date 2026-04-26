@@ -124,6 +124,23 @@ class Plate:
         """Project celestial unit vectors to pixel (px, py) arrays."""
         return project_points(v_cel, self.rvec, self.f, self.cx, self.cy, self.k1, self.k2)
 
+    def pixel_to_radec(self, px: float, py: float) -> Tuple[float, float]:
+        """Back-project pixel (px, py) to (RA_deg, Dec_deg) via iterative undistortion."""
+        xd = (float(px) - self.cx) / self.f
+        yd = (float(py) - self.cy) / self.f
+        xn, yn = xd, yd
+        for _ in range(8):
+            r2    = xn * xn + yn * yn
+            scale = 1.0 + self.k1 * r2 + self.k2 * r2 * r2
+            xn    = xd / scale
+            yn    = yd / scale
+        norm  = np.sqrt(1.0 + xn * xn + yn * yn)
+        v_cam = np.array([1.0 / norm, -xn / norm, -yn / norm])
+        v_cel = self.R.T @ v_cam
+        dec   = float(np.degrees(np.arcsin(np.clip(v_cel[2], -1.0, 1.0))))
+        ra    = float(np.degrees(np.arctan2(v_cel[1], v_cel[0]))) % 360.0
+        return ra, dec
+
     def radec_to_pixel(self, ra_deg: float, dec_deg: float) -> Optional[Tuple[int, int]]:
         """Project (RA, Dec) degrees to pixel (x, y), or None if behind camera or too far off-axis."""
         ra_s, dec_s = np.radians(ra_deg), np.radians(dec_deg)

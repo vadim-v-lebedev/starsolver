@@ -26,21 +26,23 @@ def _parse_dec(s: str) -> Optional[float]:
 
 
 def _load_catalog() -> List[Dict]:
-    path = os.path.join(os.path.dirname(__file__), 'messier.tsv')
+    path = os.path.join(os.path.dirname(__file__), 'messier.csv')
     catalog = []
     with open(path, encoding='utf-8') as f:
         next(f)  # skip header
         for line in f:
-            parts = line.rstrip('\n').split('\t')
-            if len(parts) < 8:
+            parts = line.rstrip('\n').split(',', 3)
+            if len(parts) < 4:
                 continue
-            messier = parts[0].strip()   # "M1", "M2", …
-            ra      = _parse_ra(parts[6])
-            dec     = _parse_dec(parts[7])
+            messier = parts[0].strip()
+            obj_type = parts[1].strip()
+            ra      = _parse_ra(parts[2])
+            dec     = _parse_dec(parts[3])
             if ra is None or dec is None:
                 continue
             catalog.append({
                 'messier': messier,
+                'type':    obj_type,
                 'name':    messier,
                 'ra':      ra,
                 'dec':     dec,

@@ -17,7 +17,7 @@ dependencies = [
 starsolver = "starsolver.pipeline:main"
 
 [tool.setuptools.package-data]
-starsolver = ["hip.npz", "constellation_borders.npz", "tetra3_database.npz", "*.ttf", "*.tsv"]
+starsolver = ["hip.npz", "constellation_borders.npz", "tetra3_database.npz", "*.ttf", "*.csv"]
 
 [project.optional-dependencies]
 dev = ["pytest"]
