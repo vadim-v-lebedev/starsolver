@@ -224,6 +224,9 @@ class Pipeline:
         img = load_image(image_path)
         h, w = img.shape[:2]
 
+        exif_data = self.read_exif(image_path)
+        self.timestamp = exif_data["timestamp"]
+
         if timeout_override == 0:
             timeout = None          # unlimited
         elif timeout_override is not None:
@@ -237,7 +240,7 @@ class Pipeline:
             if self.fov_hint is not None:
                 fov_long = float(self.fov_hint)
             else:
-                fov_long = self.read_exif(image_path).get('fov_estimate')
+                fov_long = exif_data['fov_estimate']
             if fov_long is not None:
                 import numpy as _np
                 f_est        = max(w, h) / (2.0 * _np.tan(_np.radians(fov_long) / 2.0))
