@@ -348,7 +348,7 @@ class Pipeline:
         special_thr = min(300.0, max(15.0, 900.0 / arcsec_per_px))
         special_matches = []
         if self.timestamp:
-            from planets import match_planets as _match_planets
+            from miniephem import match_planets as _match_planets
             special_matches += _match_planets(
                 refined_plate, self.timestamp, unknowns, special_thr)
         from deepsky import match_deepsky as _match_deepsky
@@ -473,6 +473,8 @@ def main():
         print(f"         {r['unknowns']} unidentified detections")
     if r['constellations']:
         print(f"         {r['constellations']}")
+    if r['specials']:
+        print(f"         {r['specials']}")
     print(f"Saved:   {out}")
 
 
