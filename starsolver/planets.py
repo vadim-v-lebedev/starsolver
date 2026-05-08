@@ -99,7 +99,7 @@ def _get_positions(timestamp_iso: str) -> List[Tuple[str, float, float]]:
 
     ex, ey, ez = _helio_xyz(_EL['_Earth'], T)
 
-    eps    = np.radians(23.43929111 - 0.01300417 * T)
+    eps = np.radians(23.43928)
     coseps = np.cos(eps)
     sineps = np.sin(eps)
 
