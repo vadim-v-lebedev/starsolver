@@ -288,4 +288,4 @@ def get_constellation(ra: np.ndarray, dec: np.ndarray) -> list:
         mask = unmatched & (dec > decl) & (ra >= ral) & (ra < rau)
         idx[mask] = i
 
-    return [str(names[i]) if i >= 0 else 'Unknown' for i in idx]
+    return [CONSTELLATIONS.get(str(names[i]), str(names[i])) if i >= 0 else 'Unknown' for i in idx]

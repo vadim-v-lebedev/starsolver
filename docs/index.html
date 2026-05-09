@@ -1,12 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>StarSolver demo</title>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
       font-family: system-ui, -apple-system, sans-serif;
@@ -55,7 +60,8 @@
 
     #progress-bar {
       position: absolute;
-      bottom: 0; left: 0;
+      bottom: 0;
+      left: 0;
       height: 2px;
       background: #4466ff;
       width: 0%;
@@ -74,7 +80,9 @@
       max-height: 45vh;
     }
 
-    #settings-panel.open { display: block; }
+    #settings-panel.open {
+      display: block;
+    }
 
     .cfg-row {
       display: flex;
@@ -85,7 +93,9 @@
       color: #9090b8;
     }
 
-    .cfg-row label { flex: 1; }
+    .cfg-row label {
+      flex: 1;
+    }
 
     .cfg-row input[type=range] {
       flex: 2;
@@ -93,7 +103,8 @@
     }
 
     .cfg-row input[type=checkbox] {
-      width: 18px; height: 18px;
+      width: 18px;
+      height: 18px;
       accent-color: #4466ff;
       cursor: pointer;
     }
@@ -151,7 +162,10 @@
       border-radius: 6px;
       cursor: pointer;
     }
-    #btnResetSettings:active { background: #3a2020; }
+
+    #btnResetSettings:active {
+      background: #3a2020;
+    }
 
     /* ── fov row ───────────────────────────────────────────────────────────── */
 
@@ -167,17 +181,29 @@
     }
 
     #fovHintLabel {
-      display: flex; align-items: center; gap: 5px;
-      white-space: nowrap; cursor: pointer; user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
     }
-    #fovHintEnabled { accent-color: #4466ff; width: 15px; height: 15px; cursor: pointer; }
+
+    #fovHintEnabled {
+      accent-color: #4466ff;
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
 
     #fovSlider {
       flex: 1;
       accent-color: #4466ff;
     }
 
-    #fovSlider:disabled { opacity: 0.3; }
+    #fovSlider:disabled {
+      opacity: 0.3;
+    }
 
     #fovVal {
       width: 34px;
@@ -210,8 +236,15 @@
       transition: background 0.1s, color 0.1s, opacity 0.1s;
     }
 
-    button:not(:disabled):active { background: #2a2a50; color: #c0c8ff; }
-    button:disabled { opacity: 0.3; cursor: default; }
+    button:not(:disabled):active {
+      background: #2a2a50;
+      color: #c0c8ff;
+    }
+
+    button:disabled {
+      opacity: 0.3;
+      cursor: default;
+    }
 
     button.active:not(:disabled) {
       background: #1e2d5a;
@@ -219,10 +252,23 @@
     }
 
     /* 6-column grid so bottom two buttons share the last row equally */
-    #buttons { grid-template-columns: repeat(6, 1fr); }
-    #btnLoad,  #btnDetect, #btnMask,
-    #btnSolve, #btnRefine, #btnSave   { grid-column: span 2; }
-    #btnSettings, #btnAchievements      { grid-column: span 3; }
+    #buttons {
+      grid-template-columns: repeat(6, 1fr);
+    }
+
+    #btnLoad,
+    #btnDetect,
+    #btnMask,
+    #btnSolve,
+    #btnRefine,
+    #btnSave {
+      grid-column: span 2;
+    }
+
+    #btnSettings,
+    #btnAchievements {
+      grid-column: span 3;
+    }
 
     /* ── panorama viewer ───────────────────────────────────────────────────── */
 
@@ -234,7 +280,10 @@
       background: #000;
       flex-direction: column;
     }
-    #mask-editor.open { display: flex; }
+
+    #mask-editor.open {
+      display: flex;
+    }
 
     #mask-canvas-wrap {
       flex: 1;
@@ -244,6 +293,7 @@
       justify-content: center;
       overflow: hidden;
     }
+
     #mask-bg {
       max-width: 100%;
       max-height: 100%;
@@ -252,11 +302,13 @@
       -webkit-user-select: none;
       pointer-events: none;
     }
+
     #mask-canvas {
       position: absolute;
       cursor: crosshair;
       touch-action: none;
     }
+
     #mask-toolbar {
       display: flex;
       align-items: center;
@@ -266,6 +318,7 @@
       border-top: 1px solid #2a2a44;
       flex-shrink: 0;
     }
+
     #mask-toolbar button {
       padding: 7px 14px;
       border: 1px solid #444;
@@ -277,12 +330,40 @@
       touch-action: manipulation;
       white-space: nowrap;
     }
-    #mask-toolbar button.active { background: #2a2a50; border-color: #6060aa; color: #fff; }
-    #mask-toolbar button#maskBtnApply  { color: #70c870; border-color: #406040; }
-    #mask-toolbar button#maskBtnCancel { color: #c07070; border-color: #604040; }
-    #mask-size-wrap { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 80px; }
-    #mask-size-wrap label { font-size: 12px; color: #888; white-space: nowrap; }
-    #maskBrushSize { flex: 1; }
+
+    #mask-toolbar button.active {
+      background: #2a2a50;
+      border-color: #6060aa;
+      color: #fff;
+    }
+
+    #mask-toolbar button#maskBtnApply {
+      color: #70c870;
+      border-color: #406040;
+    }
+
+    #mask-toolbar button#maskBtnCancel {
+      color: #c07070;
+      border-color: #604040;
+    }
+
+    #mask-size-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      min-width: 80px;
+    }
+
+    #mask-size-wrap label {
+      font-size: 12px;
+      color: #888;
+      white-space: nowrap;
+    }
+
+    #maskBrushSize {
+      flex: 1;
+    }
 
     #pano-viewer {
       display: none;
@@ -292,16 +373,25 @@
       background: #000;
     }
 
-    #pano-canvas { width: 100%; height: 100%; display: block; }
+    #pano-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
 
     #btnClosePano {
       position: absolute;
-      top: 12px; right: 12px;
-      width: 40px; height: 40px;
-      border: none; border-radius: 50%;
-      background: rgba(0,0,0,0.5);
-      color: #fff; font-size: 18px;
-      cursor: pointer; touch-action: manipulation;
+      top: 12px;
+      right: 12px;
+      width: 40px;
+      height: 40px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.5);
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      touch-action: manipulation;
     }
 
     /* ── achievements panel ────────────────────────────────────────────────── */
@@ -314,7 +404,10 @@
       overflow-y: auto;
       max-height: 55vh;
     }
-    #achievements-panel.open { display: block; }
+
+    #achievements-panel.open {
+      display: block;
+    }
 
     .ach-row {
       display: flex;
@@ -323,924 +416,1047 @@
       padding: 10px 0;
       border-bottom: 1px solid #1a1a30;
     }
-    .ach-label { font-size: 13px; color: #9090b8; }
-    .ach-big   { font-size: 22px; font-weight: 700; color: #d8d8f0; }
-    .ach-dim   { font-size: 14px; color: #6060a0; font-weight: 400; }
+
+    .ach-label {
+      font-size: 13px;
+      color: #9090b8;
+    }
+
+    .ach-big {
+      font-size: 22px;
+      font-weight: 700;
+      color: #d8d8f0;
+    }
+
+    .ach-dim {
+      font-size: 14px;
+      color: #6060a0;
+      font-weight: 400;
+    }
 
     #achConsList {
-      display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 0 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 8px 0 6px;
     }
 
-    .ach-img-list { margin: 4px 0 8px; }
+    .ach-img-list {
+      margin: 4px 0 8px;
+    }
 
     .ach-img-row {
-      display: flex; align-items: center; gap: 8px;
-      padding: 5px 0; border-bottom: 1px solid #12121e;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid #12121e;
     }
-    .ach-img-info { flex: 1; min-width: 0; }
+
+    .ach-img-info {
+      flex: 1;
+      min-width: 0;
+    }
+
     .ach-img-name {
-      display: block; font-size: 12px; color: #c0c0e0;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      display: block;
+      font-size: 12px;
+      color: #c0c0e0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .ach-img-coords { display: block; font-size: 10px; color: #505070; }
+
+    .ach-img-coords {
+      display: block;
+      font-size: 10px;
+      color: #505070;
+    }
 
     .ach-img-btn {
-      flex-shrink: 0; padding: 4px 10px;
-      font-size: 11px; font-weight: 600;
-      background: #1a1a30; color: #7080c0;
-      border: none; border-radius: 5px; cursor: pointer;
+      flex-shrink: 0;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      background: #1a1a30;
+      color: #7080c0;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
     }
-    .ach-img-btn:active { background: #2a2a50; }
+
+    .ach-img-btn:active {
+      background: #2a2a50;
+    }
 
     .ach-pano-btn {
-      width: 100%; margin-top: 6px; padding: 9px;
-      font-size: 13px; font-weight: 600;
-      background: #0f1f2f; color: #4090c0;
-      border: none; border-radius: 6px; cursor: pointer;
+      width: 100%;
+      margin-top: 6px;
+      padding: 9px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #0f1f2f;
+      color: #4090c0;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
     }
-    .ach-pano-btn:active  { background: #1a3040; }
-    .ach-pano-btn:disabled { opacity: 0.3; cursor: default; }
+
+    .ach-pano-btn:active {
+      background: #1a3040;
+    }
+
+    .ach-pano-btn:disabled {
+      opacity: 0.3;
+      cursor: default;
+    }
 
     #btnResetAch {
-      margin-top: 8px; width: 100%; padding: 8px;
-      font-size: 12px; font-weight: 600;
-      background: #2a1a1a; color: #c06060;
-      border: none; border-radius: 6px; cursor: pointer;
+      margin-top: 8px;
+      width: 100%;
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #2a1a1a;
+      color: #c06060;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
     }
-    #btnResetAch:active { background: #3a2020; }
+
+    #btnResetAch:active {
+      background: #3a2020;
+    }
+
     .cons-tag {
-      font-size: 11px; padding: 2px 8px; border-radius: 10px;
-      background: #14141f; color: #383860;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: #14141f;
+      color: #383860;
     }
-    .cons-tag.seen { background: #0f1f0f; color: #50a050; }
+
+    .cons-tag.seen {
+      background: #0f1f0f;
+      color: #50a050;
+    }
+
     #obj-popup {
-      position: fixed; z-index: 200;
-      background: rgba(12,12,20,0.93);
+      position: fixed;
+      z-index: 200;
+      background: rgba(12, 12, 20, 0.93);
       color: #ddd;
-      border: 1px solid rgba(255,255,255,0.18);
+      border: 1px solid rgba(255, 255, 255, 0.18);
       border-radius: 8px;
       padding: 10px 14px 8px;
-      font-size: 13px; line-height: 1.5;
+      font-size: 13px;
+      line-height: 1.5;
       max-width: 300px;
       pointer-events: auto;
     }
-    #obj-popup[hidden] { display: none; }
-    #obj-popup-close {
-      position: absolute; top: 4px; right: 8px;
-      background: none; border: none;
-      color: #888; font-size: 16px; line-height: 1;
-      cursor: pointer; padding: 0 2px;
+
+    #obj-popup[hidden] {
+      display: none;
     }
-    #obj-popup-close:hover { color: #ddd; }
-    #obj-popup table { border-collapse: collapse; margin-top: 5px; width: 100%; }
-    #obj-popup td { padding: 1px 0; }
-    #obj-popup td:first-child { color: #888; padding-right: 10px; white-space: nowrap; }
+
+    #obj-popup-close {
+      position: absolute;
+      top: 4px;
+      right: 8px;
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 2px;
+    }
+
+    #obj-popup-close:hover {
+      color: #ddd;
+    }
+
+    #obj-popup table {
+      border-collapse: collapse;
+      margin-top: 5px;
+      width: 100%;
+    }
+
+    #obj-popup td {
+      padding: 1px 0;
+    }
+
+    #obj-popup td:first-child {
+      color: #888;
+      padding-right: 10px;
+      white-space: nowrap;
+    }
   </style>
 </head>
+
 <body>
 
-<div id="status">Loading Python environment…</div>
+  <div id="status">Loading Python environment…</div>
 
-<div id="image-area">
-  <img id="preview" alt="star field">
-  <span id="placeholder">Pick or take an image to begin</span>
-  <div id="progress-bar"></div>
-</div>
-
-<div id="obj-popup" hidden>
-  <button id="obj-popup-close">×</button>
-  <div id="obj-popup-content"></div>
-</div>
-
-<div id="achievements-panel">
-  <div class="ach-row">
-    <span class="ach-label">Images solved</span>
-    <span class="ach-big" id="achImages">0</span>
-  </div>
-  <div class="ach-row" style="border-bottom:none">
-    <span class="ach-label">Constellations observed</span>
-    <span class="ach-big"><span id="achConsCount">0</span><span class="ach-dim">/88</span></span>
-  </div>
-  <div id="achConsList"></div>
-  <div class="ach-row" style="border-top:1px solid #1a1a30; border-bottom:none; margin-top:4px">
-    <span class="ach-label">Other objects observed</span>
-    <span class="ach-big"><span id="achSpecialCount">0</span><span class="ach-dim">/117</span></span>
-  </div>
-  <div id="achSpecialList" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 0 6px"></div>
-  <div class="ach-row" style="border-top:1px solid #1a1a30; border-bottom:none; margin-top:4px">
-    <span class="ach-label">Faintest object</span>
-    <span class="ach-big" id="achFaintest">—</span>
-  </div>
-  <div class="ach-row" style="border-top:1px solid #1a1a30; border-bottom:none; margin-top:4px">
-    <span class="ach-label">Observation timespan</span>
-    <span class="ach-big" id="achTimespan">—</span>
-  </div>
-  <div class="ach-row" style="border-top:1px solid #1a1a30; border-bottom:none; margin-top:8px">
-    <span class="ach-label">Processed images</span>
-    <span class="ach-dim" id="achImageCount">0</span>
-  </div>
-  <div id="achImageList" class="ach-img-list"></div>
-  <button id="btnViewPano"   class="ach-pano-btn" disabled>View panorama</button>
-  <button id="btnExportPano" class="ach-pano-btn" disabled>Export panorama</button>
-  <button id="btnResetPano"  class="ach-pano-btn" style="color:#c06060">Reset panorama</button>
-  <button id="btnResetAch">Reset all data</button>
-</div>
-
-<div id="settings-panel">
-
-  <div class="cfg-heading">Catalog</div>
-  <div class="cfg-row">
-    <label>Star catalog</label>
-    <select id="cfgCatalog">
-      <option value="hipparcos">Hipparcos (118K stars)</option>
-      <option value="tycho2">Hipparcos + Tycho-2 (2M stars)</option>
-    </select>
+  <div id="image-area">
+    <img id="preview" alt="star field">
+    <span id="placeholder">Pick or take an image to begin</span>
+    <div id="progress-bar"></div>
   </div>
 
-  <div class="cfg-section">
-    <div class="cfg-heading">Visibility</div>
-    <div class="cfg-row">
-      <label>Show timestamp</label>
-      <input type="checkbox" id="cfgShowTimestamp">
-    </div>
-    <div class="cfg-row">
-      <label>Show unidentified</label>
-      <input type="checkbox" id="cfgShowUnidentified" checked>
-    </div>
+  <div id="obj-popup" hidden>
+    <button id="obj-popup-close">×</button>
+    <div id="obj-popup-content"></div>
   </div>
 
-  <div class="cfg-section">
-    <div class="cfg-heading">Constellation lines</div>
-    <div class="cfg-row">
-      <label>Color</label>
-      <input type="color" id="cfgConstellationColor" value="#ffb400">
+  <div id="achievements-panel">
+    <div class="ach-row">
+      <span class="ach-label">Images solved</span>
+      <span class="ach-big" id="achImages">0</span>
     </div>
-    <div class="cfg-row">
-      <label>Width</label>
-      <input type="range" id="cfgConstellationThickness" min="1" max="10" value="4">
-      <span class="cfg-val" id="cfgConstellationThicknessVal">4</span>
+    <div class="ach-row" style="border-bottom:none">
+      <span class="ach-label">Constellations observed</span>
+      <span class="ach-big"><span id="achConsCount">0</span><span class="ach-dim">/88</span></span>
     </div>
-    <div class="cfg-row">
-      <label>Mask constellations</label>
-      <input type="checkbox" id="cfgMaskConstellations">
+    <div id="achConsList"></div>
+    <div class="ach-row" style="border-top:1px solid #1a1a30; border-bottom:none; margin-top:4px">
+      <span class="ach-label">Planets observed</span>
+      <span class="ach-big"><span id="achPlanetCount">0</span><span class="ach-dim">/7</span></span>
     </div>
+    <div id="achPlanetList" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 0 6px"></div>
+    <div id="achOtherSection" style="display:none">
+      <div class="ach-row" style="border-top:1px solid #1a1a30; border-bottom:none; margin-top:4px">
+        <span class="ach-label">Other objects</span>
+      </div>
+      <div id="achOtherList" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 0 6px"></div>
+    </div>
+    <div class="ach-row" style="border-top:1px solid #1a1a30; border-bottom:none; margin-top:4px">
+      <span class="ach-label">Faintest object</span>
+      <span class="ach-big" id="achFaintest">—</span>
+    </div>
+    <div class="ach-row" style="border-top:1px solid #1a1a30; border-bottom:none; margin-top:4px">
+      <span class="ach-label">Observation timespan</span>
+      <span class="ach-big" id="achTimespan">—</span>
+    </div>
+    <div class="ach-row" style="border-top:1px solid #1a1a30; border-bottom:none; margin-top:8px">
+      <span class="ach-label">Processed images</span>
+      <span class="ach-dim" id="achImageCount">0</span>
+    </div>
+    <div id="achImageList" class="ach-img-list"></div>
+    <button id="btnViewPano" class="ach-pano-btn" disabled>View panorama</button>
+    <button id="btnExportPano" class="ach-pano-btn" disabled>Export panorama</button>
+    <button id="btnResetPano" class="ach-pano-btn" style="color:#c06060">Reset panorama</button>
+    <button id="btnResetAch">Reset all data</button>
   </div>
 
-  <div class="cfg-section">
-    <div class="cfg-heading">Marker settings</div>
-    <div class="cfg-row">
-      <label>Radius</label>
-      <input type="range" id="cfgStarRadius" min="10" max="50" value="25">
-      <span class="cfg-val" id="cfgStarRadiusVal">25</span>
-    </div>
-    <div class="cfg-row">
-      <label>Circle width</label>
-      <input type="range" id="cfgCircleThickness" min="1" max="8" value="2">
-      <span class="cfg-val" id="cfgCircleThicknessVal">2</span>
-    </div>
-    <div class="cfg-row">
-      <label>Text size</label>
-      <input type="range" id="cfgTextSize" min="24" max="96" value="48">
-      <span class="cfg-val" id="cfgTextSizeVal">48</span>
-    </div>
-  </div>
+  <div id="settings-panel">
 
-  <div class="cfg-section">
-    <div class="cfg-heading">Marker colors</div>
+    <div class="cfg-heading">Catalog</div>
     <div class="cfg-row">
-      <label>Detections</label>
-      <input type="color" id="cfgDetectionColor" value="#00ff00">
-    </div>
-    <div class="cfg-row">
-      <label>Matched stars</label>
-      <input type="color" id="cfgMatchColor" value="#ffb400">
-    </div>
-    <div class="cfg-row">
-      <label>Other objects</label>
-      <input type="color" id="cfgSpecialColor" value="#0064ff">
-    </div>
-    <div class="cfg-row">
-      <label>Unidentified</label>
-      <input type="color" id="cfgUnknownColor" value="#c83232">
-    </div>
-  </div>
-
-  <div class="cfg-section">
-    <div class="cfg-heading">Panorama</div>
-    <div class="cfg-row">
-      <label>Grid</label>
-      <input type="checkbox" id="cfgPanoGrid" checked>
-    </div>
-    <div class="cfg-row">
-      <label>Constellations</label>
-      <select id="cfgPanoCons">
-        <option value="off">Off</option>
-        <option value="all">All</option>
-        <option value="observed">Observed only</option>
+      <label>Star catalog</label>
+      <select id="cfgCatalog">
+        <option value="hipparcos">Hipparcos (118K stars)</option>
+        <option value="tycho2">Hipparcos + Tycho-2 (2M stars)</option>
       </select>
     </div>
-    <div class="cfg-row">
-      <label>Resolution</label>
-      <select id="cfgPanoRes">
-        <option value="2048">2048 × 1024</option>
-        <option value="4096">4096 × 2048</option>
-        <option value="8192">8192 × 4096</option>
-      </select>
+
+    <div class="cfg-section">
+      <div class="cfg-heading">Visibility</div>
+      <div class="cfg-row">
+        <label>Show timestamp</label>
+        <input type="checkbox" id="cfgShowTimestamp">
+      </div>
+      <div class="cfg-row">
+        <label>Show unidentified</label>
+        <input type="checkbox" id="cfgShowUnidentified" checked>
+      </div>
     </div>
-    <div class="cfg-row">
-      <label>Blending</label>
-      <select id="cfgPanoBlend">
-        <option value="overwrite">Overwrite</option>
-        <option value="average">Average</option>
-      </select>
+
+    <div class="cfg-section">
+      <div class="cfg-heading">Constellation lines</div>
+      <div class="cfg-row">
+        <label>Color</label>
+        <input type="color" id="cfgConstellationColor" value="#ffb400">
+      </div>
+      <div class="cfg-row">
+        <label>Width</label>
+        <input type="range" id="cfgConstellationThickness" min="1" max="10" value="4">
+        <span class="cfg-val" id="cfgConstellationThicknessVal">4</span>
+      </div>
+      <div class="cfg-row">
+        <label>Mask constellations</label>
+        <input type="checkbox" id="cfgMaskConstellations">
+      </div>
     </div>
-    <div style="font-size:10px;color:#556;padding:2px 0 4px">Resolution &amp; blending take effect after Reset panorama</div>
+
+    <div class="cfg-section">
+      <div class="cfg-heading">Marker settings</div>
+      <div class="cfg-row">
+        <label>Radius</label>
+        <input type="range" id="cfgStarRadius" min="10" max="50" value="25">
+        <span class="cfg-val" id="cfgStarRadiusVal">25</span>
+      </div>
+      <div class="cfg-row">
+        <label>Circle width</label>
+        <input type="range" id="cfgCircleThickness" min="1" max="8" value="2">
+        <span class="cfg-val" id="cfgCircleThicknessVal">2</span>
+      </div>
+      <div class="cfg-row">
+        <label>Text size</label>
+        <input type="range" id="cfgTextSize" min="24" max="96" value="48">
+        <span class="cfg-val" id="cfgTextSizeVal">48</span>
+      </div>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-heading">Marker colors</div>
+      <div class="cfg-row">
+        <label>Detections</label>
+        <input type="color" id="cfgDetectionColor" value="#00ff00">
+      </div>
+      <div class="cfg-row">
+        <label>Matched stars</label>
+        <input type="color" id="cfgMatchColor" value="#ffb400">
+      </div>
+      <div class="cfg-row">
+        <label>Other objects</label>
+        <input type="color" id="cfgSpecialColor" value="#0064ff">
+      </div>
+      <div class="cfg-row">
+        <label>Unidentified</label>
+        <input type="color" id="cfgUnknownColor" value="#c83232">
+      </div>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-heading">Panorama</div>
+      <div class="cfg-row">
+        <label>Grid</label>
+        <input type="checkbox" id="cfgPanoGrid" checked>
+      </div>
+      <div class="cfg-row">
+        <label>Constellations</label>
+        <select id="cfgPanoCons">
+          <option value="off">Off</option>
+          <option value="all">All</option>
+          <option value="observed">Observed only</option>
+        </select>
+      </div>
+      <div class="cfg-row">
+        <label>Resolution</label>
+        <select id="cfgPanoRes">
+          <option value="2048">2048 × 1024</option>
+          <option value="4096">4096 × 2048</option>
+          <option value="8192">8192 × 4096</option>
+        </select>
+      </div>
+      <div class="cfg-row">
+        <label>Blending</label>
+        <select id="cfgPanoBlend">
+          <option value="overwrite">Overwrite</option>
+          <option value="average">Average</option>
+        </select>
+      </div>
+      <div style="font-size:10px;color:#556;padding:2px 0 4px">Resolution &amp; blending take effect after Reset
+        panorama</div>
+    </div>
+
+    <button id="btnResetSettings">Reset to defaults</button>
   </div>
 
-  <button id="btnResetSettings">Reset to defaults</button>
-</div>
-
-<div id="fov-row">
-  <label id="fovHintLabel"><input type="checkbox" id="fovHintEnabled" checked> FOV</label>
-  <input type="range" id="fovSlider" min="20" max="130" value="76" disabled>
-  <span id="fovVal">—</span>
-</div>
-
-<div id="buttons">
-  <button id="btnLoad"     disabled>Load</button>
-  <button id="btnDetect"   disabled>Detect</button>
-  <button id="btnMask"     disabled>Mask</button>
-  <button id="btnSolve"    disabled>Solve</button>
-  <button id="btnRefine"   disabled>Refine</button>
-  <button id="btnSave"     disabled>Save</button>
-  <button id="btnSettings"      disabled>Settings</button>
-  <button id="btnAchievements" disabled>Achievements</button>
-</div>
-
-<input id="inputGallery"    type="file" accept="image/*" style="display:none">
-<input id="inputPanoReload" type="file" accept="image/*"                       style="display:none">
-
-<div id="mask-editor">
-  <div id="mask-canvas-wrap">
-    <img id="mask-bg" draggable="false" alt="">
-    <canvas id="mask-canvas"></canvas>
+  <div id="fov-row">
+    <label id="fovHintLabel"><input type="checkbox" id="fovHintEnabled" checked> FOV</label>
+    <input type="range" id="fovSlider" min="20" max="130" value="76" disabled>
+    <span id="fovVal">—</span>
   </div>
-  <div id="mask-toolbar">
-    <button id="maskBtnDraw"  class="active">Draw</button>
-    <button id="maskBtnErase">Erase</button>
-    <div class="mask-size-wrap" style="display:flex;align-items:center;gap:6px;flex:1;min-width:80px">
-      <label style="font-size:12px;color:#888">Size</label>
-      <input type="range" id="maskBrushSize" min="5" max="150" value="40" style="flex:1">
+
+  <div id="buttons">
+    <button id="btnLoad" disabled>Load</button>
+    <button id="btnDetect" disabled>Detect</button>
+    <button id="btnMask" disabled>Mask</button>
+    <button id="btnSolve" disabled>Solve</button>
+    <button id="btnRefine" disabled>Refine</button>
+    <button id="btnSave" disabled>Save</button>
+    <button id="btnSettings" disabled>Settings</button>
+    <button id="btnAchievements" disabled>Achievements</button>
+  </div>
+
+  <input id="inputGallery" type="file" accept="image/*" style="display:none">
+  <input id="inputPanoReload" type="file" accept="image/*" style="display:none">
+
+  <div id="mask-editor">
+    <div id="mask-canvas-wrap">
+      <img id="mask-bg" draggable="false" alt="">
+      <canvas id="mask-canvas"></canvas>
     </div>
-    <button id="maskBtnClear">Clear</button>
-    <button id="maskBtnApply">Apply</button>
-    <button id="maskBtnCancel">Cancel</button>
+    <div id="mask-toolbar">
+      <button id="maskBtnDraw" class="active">Draw</button>
+      <button id="maskBtnErase">Erase</button>
+      <div class="mask-size-wrap" style="display:flex;align-items:center;gap:6px;flex:1;min-width:80px">
+        <label style="font-size:12px;color:#888">Size</label>
+        <input type="range" id="maskBrushSize" min="5" max="150" value="40" style="flex:1">
+      </div>
+      <button id="maskBtnClear">Clear</button>
+      <button id="maskBtnApply">Apply</button>
+      <button id="maskBtnCancel">Cancel</button>
+    </div>
   </div>
-</div>
 
-<div id="pano-viewer">
-  <canvas id="pano-canvas"></canvas>
-  <button id="btnClosePano">✕</button>
-</div>
+  <div id="pano-viewer">
+    <canvas id="pano-canvas"></canvas>
+    <button id="btnClosePano">✕</button>
+  </div>
 
-<script>
-// ── state ─────────────────────────────────────────────────────────────────────
-let pyodide         = null;
-let pipeline        = null;
-let pano            = null;
-let busy            = false;
-let imagePath        = '/tmp/input.jpg';
-let outputPath       = '/tmp/output.jpg';
-let currentBlobURL   = null;
-let currentImageFile  = null;
-let currentImageBytes = null;
-const imageStore      = new Map();  // filename → { bytes|null, ra, dec, fov, plate }
-let starsOk              = false;
-let solvedOk             = false;
-let solveUnlimited       = false;
-let currentImageTimestamp = null;   // ISO string from EXIF, or null
-let detectThreshold   = 20.0;
-let currentFovEstimate = null;  // long-axis FOV from EXIF, degrees, or null
-let currentObjects     = null;  // {stars, unknowns, specials} from last refine
+  <script>
+    // ── state ─────────────────────────────────────────────────────────────────────
+    let pyodide = null;
+    let pipeline = null;
+    let pano = null;
+    let busy = false;
+    let imagePath = '/tmp/input.jpg';
+    let outputPath = '/tmp/output.jpg';
+    let currentBlobURL = null;
+    let currentImageFile = null;
+    let currentImageBytes = null;
+    const imageStore = new Map();  // filename → { bytes|null, ra, dec, fov, plate }
+    let starsOk = false;
+    let solvedOk = false;
+    let solveUnlimited = false;
+    let currentImageTimestamp = null;   // ISO string from EXIF, or null
+    let detectThreshold = 20.0;
+    let currentFovEstimate = null;  // long-axis FOV from EXIF, degrees, or null
+    let currentObjects = null;  // {stars, unknowns, specials} from last refine
 
-// ── DOM ───────────────────────────────────────────────────────────────────────
-const elStatus   = document.getElementById('status');
-const elPreview  = document.getElementById('preview');
-const elHolder   = document.getElementById('placeholder');
-const elProgress = document.getElementById('progress-bar');
-const btnLoad     = document.getElementById('btnLoad');
-const btnDetect   = document.getElementById('btnDetect');
-const btnMask     = document.getElementById('btnMask');
-const btnSolve    = document.getElementById('btnSolve');
-const btnRefine   = document.getElementById('btnRefine');
-const btnSave     = document.getElementById('btnSave');
-const btnSettings = document.getElementById('btnSettings');
+    // ── DOM ───────────────────────────────────────────────────────────────────────
+    const elStatus = document.getElementById('status');
+    const elPreview = document.getElementById('preview');
+    const elHolder = document.getElementById('placeholder');
+    const elProgress = document.getElementById('progress-bar');
+    const btnLoad = document.getElementById('btnLoad');
+    const btnDetect = document.getElementById('btnDetect');
+    const btnMask = document.getElementById('btnMask');
+    const btnSolve = document.getElementById('btnSolve');
+    const btnRefine = document.getElementById('btnRefine');
+    const btnSave = document.getElementById('btnSave');
+    const btnSettings = document.getElementById('btnSettings');
 
-// ── helpers ───────────────────────────────────────────────────────────────────
-function setStatus(msg) { elStatus.textContent = msg; }
+    // ── helpers ───────────────────────────────────────────────────────────────────
+    function setStatus(msg) { elStatus.textContent = msg; }
 
-function setProgress(pct) {
-  if (pct === null) { elProgress.style.display = 'none'; return; }
-  elProgress.style.display = 'block';
-  elProgress.style.width   = pct + '%';
-}
+    function setProgress(pct) {
+      if (pct === null) { elProgress.style.display = 'none'; return; }
+      elProgress.style.display = 'block';
+      elProgress.style.width = pct + '%';
+    }
 
-function setButtons({ load=false, detect=false, mask=false,
-                      solve=false, refine=false, save=false,
-                      settings=false, achievements=false } = {}) {
-  btnLoad.disabled          = !load;
-  btnDetect.disabled        = !detect;
-  btnMask.disabled          = !mask;
-  btnSolve.disabled         = !solve;
-  btnRefine.disabled        = !refine;
-  btnSave.disabled          = !save;
-  btnSettings.disabled      = !settings;
-  btnAchievements.disabled  = !achievements;
-  [btnDetect, btnSolve, btnRefine].forEach(b => b.classList.remove('active'));
-}
+    function setButtons({ load = false, detect = false, mask = false,
+      solve = false, refine = false, save = false,
+      settings = false, achievements = false } = {}) {
+      btnLoad.disabled = !load;
+      btnDetect.disabled = !detect;
+      btnMask.disabled = !mask;
+      btnSolve.disabled = !solve;
+      btnRefine.disabled = !refine;
+      btnSave.disabled = !save;
+      btnSettings.disabled = !settings;
+      btnAchievements.disabled = !achievements;
+      [btnDetect, btnSolve, btnRefine].forEach(b => b.classList.remove('active'));
+    }
 
-function setBusy(on) {
-  busy = on;
-  if (on) setButtons({});
-}
+    function setBusy(on) {
+      busy = on;
+      if (on) setButtons({});
+    }
 
-// ── object popup ──────────────────────────────────────────────────────────────
-function _rdFmt(ra, dec) {
-  const s = dec >= 0 ? '+' : '';
-  return `${ra.toFixed(2)}°&ensp;${s}${dec.toFixed(2)}°`;
-}
+    // ── object popup ──────────────────────────────────────────────────────────────
+    function _rdFmt(ra, dec) {
+      const s = dec >= 0 ? '+' : '';
+      return `${ra.toFixed(2)}°&ensp;${s}${dec.toFixed(2)}°`;
+    }
 
-function showPopup(obj, vpx, vpy) {
-  const popup   = document.getElementById('obj-popup');
-  const content = document.getElementById('obj-popup-content');
+    function showPopup(obj, vpx, vpy) {
+      const popup = document.getElementById('obj-popup');
+      const content = document.getElementById('obj-popup-content');
 
-  let title = '', catRaDec = '', catMag = '', obsRaDec = '', obsMag = '', residual = '';
+      let title = '', catRaDec = '', catMag = '', obsRaDec = '', obsMag = '', residual = '';
 
-  if (obj._type === 'star') {
-    const idStr = obj.hip_id > 0 ? `HIP ${obj.hip_id}` : 'star (Tycho-2)';
-    title    = obj.name
-      ? `<b>${obj.name}</b>&ensp;<span style="color:#777">${idStr}</span>`
-      : `<b>${idStr}</b>`;
-    catRaDec = _rdFmt(obj.ra, obj.dec);
-    catMag   = `${obj.mag.toFixed(2)}m`;
-    obsRaDec = _rdFmt(obj.obs_ra, obj.obs_dec);
-    obsMag   = `${obj.pred_mag.toFixed(2)}m`;
-    residual = `${obj.pixel_error.toFixed(1)} px`;
+      if (obj._type === 'star') {
+        const idStr = obj.hip_id > 0 ? `HIP ${obj.hip_id}` : 'star (Tycho-2)';
+        title = obj.name
+          ? `<b>${obj.name}</b>&ensp;<span style="color:#777">${idStr}</span>`
+          : `<b>${idStr}</b>`;
+        catRaDec = _rdFmt(obj.ra, obj.dec);
+        catMag = `${obj.mag.toFixed(2)}m`;
+        obsRaDec = _rdFmt(obj.obs_ra, obj.obs_dec);
+        obsMag = `${obj.pred_mag.toFixed(2)}m`;
+        residual = `${obj.pixel_error.toFixed(1)} px`;
 
-  } else if (obj._type === 'unknown') {
-    const nearId = obj.nearest_hip > 0 ? `HIP ${obj.nearest_hip}` : 'star (Tycho-2)';
-    const nearest = obj.nearest_name
-      ? `${obj.nearest_name} · ${nearId}`
-      : nearId;
-    title    = `<b style="color:#e06060">Unidentified</b><br><span style="color:#888">Nearest: ${nearest}</span>`;
-    catRaDec = _rdFmt(obj.nearest_ra, obj.nearest_dec);
-    catMag   = `${obj.nearest_mag.toFixed(2)}m`;
-    obsRaDec = _rdFmt(obj.obs_ra, obj.obs_dec);
-    obsMag   = `${obj.pred_mag.toFixed(2)}m`;
-    residual = `${obj.nearest_dist_px} px`;
+      } else if (obj._type === 'unknown') {
+        const nearId = obj.nearest_hip > 0 ? `HIP ${obj.nearest_hip}` : 'star (Tycho-2)';
+        const nearest = obj.nearest_name
+          ? `${obj.nearest_name} · ${nearId}`
+          : nearId;
+        title = `<b style="color:#e06060">Unidentified</b><br><span style="color:#888">Nearest: ${nearest}</span>`;
+        catRaDec = _rdFmt(obj.nearest_ra, obj.nearest_dec);
+        catMag = `${obj.nearest_mag.toFixed(2)}m`;
+        obsRaDec = _rdFmt(obj.obs_ra, obj.obs_dec);
+        obsMag = `${obj.pred_mag.toFixed(2)}m`;
+        residual = `${obj.nearest_dist_px} px`;
 
-  } else {
-    const sub = obj.type ? `<br><span style="color:#888">${obj.type}</span>` : '';
-    title    = `<b>${obj.name}</b>${sub}`;
-    catRaDec = _rdFmt(obj.ra, obj.dec);
-    obsRaDec = _rdFmt(obj.obs_ra, obj.obs_dec);
-    residual = obj.pixel_error != null ? `${obj.pixel_error} px` : '—';
-  }
+      } else {
+        const sub = obj.type ? `<br><span style="color:#888">${obj.type}</span>` : '';
+        title = `<b>${obj.name}</b>${sub}`;
+        catRaDec = _rdFmt(obj.ra, obj.dec);
+        obsRaDec = _rdFmt(obj.obs_ra, obj.obs_dec);
+        residual = obj.pixel_error != null ? `${obj.pixel_error} px` : '—';
+      }
 
-  const magCol = (v) => v ? `<td>&ensp;${v}</td>` : '<td></td>';
-  content.innerHTML = `<div style="margin-bottom:5px">${title}</div><table>
+      const magCol = (v) => v ? `<td>&ensp;${v}</td>` : '<td></td>';
+      content.innerHTML = `<div style="margin-bottom:5px">${title}</div><table>
     <tr><td>Catalog</td><td>${catRaDec}</td>${magCol(catMag)}</tr>
     <tr><td>Observed</td><td>${obsRaDec}</td>${magCol(obsMag)}</tr>
     <tr><td>Residual</td><td colspan="2">${residual}</td></tr>
   </table>`;
 
-  popup.removeAttribute('hidden');
-  const margin = 10, pw = 300, ph = 110;
-  let left = vpx + 14, top = vpy - 14;
-  if (left + pw > window.innerWidth  - margin) left = vpx - pw - 14;
-  if (top  + ph > window.innerHeight - margin) top  = vpy - ph;
-  if (top  < margin) top = margin;
-  if (left < margin) left = margin;
-  popup.style.left = `${left}px`;
-  popup.style.top  = `${top}px`;
-}
+      popup.removeAttribute('hidden');
+      const margin = 10, pw = 300, ph = 110;
+      let left = vpx + 14, top = vpy - 14;
+      if (left + pw > window.innerWidth - margin) left = vpx - pw - 14;
+      if (top + ph > window.innerHeight - margin) top = vpy - ph;
+      if (top < margin) top = margin;
+      if (left < margin) left = margin;
+      popup.style.left = `${left}px`;
+      popup.style.top = `${top}px`;
+    }
 
-function hidePopup() {
-  document.getElementById('obj-popup').setAttribute('hidden', '');
-}
+    function hidePopup() {
+      document.getElementById('obj-popup').setAttribute('hidden', '');
+    }
 
-document.getElementById('obj-popup-close').addEventListener('click', hidePopup);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') hidePopup(); });
+    document.getElementById('obj-popup-close').addEventListener('click', hidePopup);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') hidePopup(); });
 
-elPreview.addEventListener('click', e => {
-  if (!currentObjects) return;
-  const rect = elPreview.getBoundingClientRect();
-  const sx = elPreview.naturalWidth  / elPreview.clientWidth;
-  const sy = elPreview.naturalHeight / elPreview.clientHeight;
-  const ix = (e.clientX - rect.left) * sx;
-  const iy = (e.clientY - rect.top)  * sy;
-  const all = [
-    ...currentObjects.stars.map(s => ({...s, _type: 'star'})),
-    ...currentObjects.unknowns.map(u => ({...u, _type: 'unknown'})),
-    ...currentObjects.specials.map(sp => ({...sp, _type: 'special'})),
-  ];
-  const THRESHOLD2 = 100 * 100;
-  let best = null, bestD2 = THRESHOLD2;
-  for (const obj of all) {
-    const d2 = (obj.x - ix) ** 2 + (obj.y - iy) ** 2;
-    if (d2 < bestD2) { bestD2 = d2; best = obj; }
-  }
-  if (!best) { hidePopup(); return; }
-  showPopup(best, e.clientX, e.clientY);
-});
-
-function showImage(data) {
-  if (currentBlobURL) URL.revokeObjectURL(currentBlobURL);
-  currentBlobURL = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
-  elPreview.src           = currentBlobURL;
-  elPreview.style.display = 'block';
-  elHolder.style.display  = 'none';
-}
-
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-// ── FOV slider ────────────────────────────────────────────────────────────────
-const elFovSlider      = document.getElementById('fovSlider');
-const elFovVal         = document.getElementById('fovVal');
-const elFovHintEnabled = document.getElementById('fovHintEnabled');
-let   fovHintOn        = true;   // mirrors checkbox
-let   fovSliderActive  = false;  // true when image loaded and not yet solved
-
-elFovSlider.addEventListener('input', () => {
-  elFovVal.textContent = elFovSlider.value + '°';
-});
-
-elFovHintEnabled.addEventListener('change', () => {
-  fovHintOn = elFovHintEnabled.checked;
-  elFovSlider.disabled = !fovSliderActive || !fovHintOn;
-});
-
-function setFovSlider({ enabled, value = null }) {
-  fovSliderActive = enabled;
-  elFovSlider.disabled = !enabled || !fovHintOn;
-  if (value !== null) {
-    elFovSlider.value    = Math.round(value);
-    elFovVal.textContent = Math.round(value) + '°';
-  } else if (!enabled && elFovVal.textContent === '—') {
-    // keep '—' only while still in the pre-image state
-  }
-}
-
-async function fetchText(url) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`Fetch failed (${r.status}): ${url}`);
-  return r.text();
-}
-
-async function fetchBinary(url) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`Fetch failed (${r.status}): ${url}`);
-  return new Uint8Array(await r.arrayBuffer());
-}
-
-
-// ── achievements ──────────────────────────────────────────────────────────────
-
-const CONS_ALL = [
-  'Andromeda','Antlia','Apus','Aquarius','Aquila','Ara','Aries','Auriga',
-  'Boötes','Caelum','Camelopardalis','Cancer','Canes Venatici','Canis Major',
-  'Canis Minor','Capricornus','Carina','Cassiopeia','Centaurus','Cepheus',
-  'Cetus','Chamaeleon','Circinus','Columba','Coma Berenices','Corona Australis',
-  'Corona Borealis','Corvus','Crater','Crux','Cygnus','Delphinus','Dorado',
-  'Draco','Equuleus','Eridanus','Fornax','Gemini','Grus','Hercules',
-  'Horologium','Hydra','Hydrus','Indus','Lacerta','Leo','Leo Minor','Lepus',
-  'Libra','Lupus','Lynx','Lyra','Mensa','Microscopium','Monoceros','Musca',
-  'Norma','Octans','Ophiuchus','Orion','Pavo','Pegasus','Perseus','Phoenix',
-  'Pictor','Pisces','Piscis Austrinus','Puppis','Pyxis','Reticulum','Sagitta',
-  'Sagittarius','Scorpius','Sculptor','Scutum','Serpens','Sextans','Taurus',
-  'Telescopium','Triangulum','Triangulum Australe','Tucana','Ursa Major',
-  'Ursa Minor','Vela','Virgo','Volans','Vulpecula',
-];
-
-const ACH_KEY = 'starsolver_ach';
-
-function loadAch() {
-  const defaults = { images: 0, imageFiles: [], constellations: [], specials: [], faintest: null };
-  try {
-    const a = { ...defaults, ...JSON.parse(localStorage.getItem(ACH_KEY) || '{}') };
-    if (a.planets && !a.specials.length) { a.specials = a.planets; delete a.planets; saveAch(a); }
-    return a;
-  } catch { return defaults; }
-}
-function saveAch(a) { localStorage.setItem(ACH_KEY, JSON.stringify(a)); }
-
-const IMAGES_KEY = 'starsolver_images';
-
-function saveImageStore() {
-  const data = [];
-  imageStore.forEach((rec, filename) => {
-    data.push({ filename, ra: rec.ra, dec: rec.dec, fov: rec.fov, plate: rec.plate });
-  });
-  localStorage.setItem(IMAGES_KEY, JSON.stringify(data));
-}
-
-function loadImageStore() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(IMAGES_KEY) || '[]');
-    saved.forEach(({ filename, ra, dec, fov, plate }) => {
-      if (!imageStore.has(filename))
-        imageStore.set(filename, { bytes: null, ra, dec, fov, plate });
+    elPreview.addEventListener('click', e => {
+      if (!currentObjects) return;
+      const rect = elPreview.getBoundingClientRect();
+      const sx = elPreview.naturalWidth / elPreview.clientWidth;
+      const sy = elPreview.naturalHeight / elPreview.clientHeight;
+      const ix = (e.clientX - rect.left) * sx;
+      const iy = (e.clientY - rect.top) * sy;
+      const all = [
+        ...currentObjects.stars.map(s => ({ ...s, _type: 'star' })),
+        ...currentObjects.unknowns.map(u => ({ ...u, _type: 'unknown' })),
+        ...currentObjects.specials.map(sp => ({ ...sp, _type: 'special' })),
+      ];
+      const THRESHOLD2 = 100 * 100;
+      let best = null, bestD2 = THRESHOLD2;
+      for (const obj of all) {
+        const d2 = (obj.x - ix) ** 2 + (obj.y - iy) ** 2;
+        if (d2 < bestD2) { bestD2 = d2; best = obj; }
+      }
+      if (!best) { hidePopup(); return; }
+      showPopup(best, e.clientX, e.clientY);
     });
-  } catch {}
-}
 
-function updateAchievements({ constellations, specials, faintest, imageFile } = {}) {
-  const a = loadAch();
-  if (!a.imageFiles) a.imageFiles = [];
+    function showImage(data) {
+      if (currentBlobURL) URL.revokeObjectURL(currentBlobURL);
+      currentBlobURL = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
+      elPreview.src = currentBlobURL;
+      elPreview.style.display = 'block';
+      elHolder.style.display = 'none';
+    }
 
-  if (imageFile && !a.imageFiles.includes(imageFile)) {
-    a.imageFiles.push(imageFile);
-    a.images += 1;
-  }
-  if (constellations && constellations.length) {
-    const seen = new Set(a.constellations);
-    constellations.forEach(c => seen.add(c));
-    a.constellations = [...seen];
-  }
-  if (specials && specials.length) {
-    const seen = new Set(a.specials || []);
-    specials.forEach(s => seen.add(s));
-    a.specials = [...seen];
-  }
-  if (faintest != null && (a.faintest === null || faintest > a.faintest)) {
-    a.faintest = faintest;
-  }
-  saveAch(a);
-}
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-function formatTimespan(ms) {
-  const s = ms / 1000;
-  if (s < 60)   return `${Math.round(s)}s`;
-  const m = s / 60;
-  if (m < 60)   return `${Math.round(m)}m`;
-  const h = m / 60;
-  if (h < 24)   return `${Math.round(h)}h`;
-  const d = h / 24;
-  if (d < 30)   return `${Math.round(d)} day${Math.round(d) !== 1 ? 's' : ''}`;
-  const mo = d / 30.44;
-  if (mo < 12)  return `${Math.round(mo)} month${Math.round(mo) !== 1 ? 's' : ''}`;
-  const yr = d / 365.25;
-  return `${yr.toFixed(1)} year${parseFloat(yr.toFixed(1)) !== 1.0 ? 's' : ''}`;
-}
+    // ── FOV slider ────────────────────────────────────────────────────────────────
+    const elFovSlider = document.getElementById('fovSlider');
+    const elFovVal = document.getElementById('fovVal');
+    const elFovHintEnabled = document.getElementById('fovHintEnabled');
+    let fovHintOn = true;   // mirrors checkbox
+    let fovSliderActive = false;  // true when image loaded and not yet solved
 
-function renderAchievements() {
-  const a = loadAch();
-  const seen = new Set(a.constellations);
-
-  document.getElementById('achImages').textContent    = a.images;
-  document.getElementById('achConsCount').textContent = seen.size;
-  document.getElementById('achFaintest').textContent  =
-    a.faintest != null ? a.faintest.toFixed(1) + 'm' : '—';
-
-  const tms = [];
-  imageStore.forEach(rec => {
-    const ts = rec.plate && rec.plate.timestamp;
-    if (ts) tms.push(new Date(ts).getTime());
-  });
-  let timespanText = 'Unknown';
-  if (tms.length >= 2) {
-    const span = Math.max(...tms) - Math.min(...tms);
-    timespanText = span === 0 ? '0s' : formatTimespan(span);
-  } else if (tms.length === 1) {
-    timespanText = '-';
-  }
-  document.getElementById('achTimespan').textContent = timespanText;
-
-  const list = document.getElementById('achConsList');
-  if (!list.children.length) {
-    CONS_ALL.forEach(name => {
-      const span = document.createElement('span');
-      span.className = 'cons-tag';
-      span.dataset.cons = name;
-      span.textContent  = name;
-      list.appendChild(span);
+    elFovSlider.addEventListener('input', () => {
+      elFovVal.textContent = elFovSlider.value + '°';
     });
-  }
-  list.querySelectorAll('.cons-tag').forEach(el => {
-    el.classList.toggle('seen', seen.has(el.dataset.cons));
-  });
 
-  // Other objects (planets + Messier)
-  const seenSpecials = new Set(a.specials || []);
-  document.getElementById('achSpecialCount').textContent = seenSpecials.size;
-  const ALL_PLANETS = ['Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune'];
-  const ALL_MESSIER = Array.from({length: 110}, (_, i) => `M${i + 1}`);
-  const sList = document.getElementById('achSpecialList');
-  sList.innerHTML = [...ALL_PLANETS, ...ALL_MESSIER].map(s =>
-    `<span class="cons-tag${seenSpecials.has(s) ? ' seen' : ''}">${s}</span>`
-  ).join('');
+    elFovHintEnabled.addEventListener('change', () => {
+      fovHintOn = elFovHintEnabled.checked;
+      elFovSlider.disabled = !fovSliderActive || !fovHintOn;
+    });
 
-  // Processed images (session)
-  const imgList = document.getElementById('achImageList');
-  imgList.innerHTML = '';
-  document.getElementById('achImageCount').textContent = imageStore.size;
-  if (imageStore.size === 0) {
-    imgList.innerHTML = '<div style="font-size:11px;color:#404060;padding:4px 0">No images solved</div>';
-  } else {
-    imageStore.forEach((rec, name) => {
-      const row  = document.createElement('div');
-      row.className = 'ach-img-row';
-      row.innerHTML = `
+    function setFovSlider({ enabled, value = null }) {
+      fovSliderActive = enabled;
+      elFovSlider.disabled = !enabled || !fovHintOn;
+      if (value !== null) {
+        elFovSlider.value = Math.round(value);
+        elFovVal.textContent = Math.round(value) + '°';
+      } else if (!enabled && elFovVal.textContent === '—') {
+        // keep '—' only while still in the pre-image state
+      }
+    }
+
+    async function fetchText(url) {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`Fetch failed (${r.status}): ${url}`);
+      return r.text();
+    }
+
+    async function fetchBinary(url) {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`Fetch failed (${r.status}): ${url}`);
+      return new Uint8Array(await r.arrayBuffer());
+    }
+
+
+    // ── achievements ──────────────────────────────────────────────────────────────
+
+    const CONS_ALL = [
+      'Andromeda', 'Antlia', 'Apus', 'Aquarius', 'Aquila', 'Ara', 'Aries', 'Auriga',
+      'Boötes', 'Caelum', 'Camelopardalis', 'Cancer', 'Canes Venatici', 'Canis Major',
+      'Canis Minor', 'Capricornus', 'Carina', 'Cassiopeia', 'Centaurus', 'Cepheus',
+      'Cetus', 'Chamaeleon', 'Circinus', 'Columba', 'Coma Berenices', 'Corona Australis',
+      'Corona Borealis', 'Corvus', 'Crater', 'Crux', 'Cygnus', 'Delphinus', 'Dorado',
+      'Draco', 'Equuleus', 'Eridanus', 'Fornax', 'Gemini', 'Grus', 'Hercules',
+      'Horologium', 'Hydra', 'Hydrus', 'Indus', 'Lacerta', 'Leo', 'Leo Minor', 'Lepus',
+      'Libra', 'Lupus', 'Lynx', 'Lyra', 'Mensa', 'Microscopium', 'Monoceros', 'Musca',
+      'Norma', 'Octans', 'Ophiuchus', 'Orion', 'Pavo', 'Pegasus', 'Perseus', 'Phoenix',
+      'Pictor', 'Pisces', 'Piscis Austrinus', 'Puppis', 'Pyxis', 'Reticulum', 'Sagitta',
+      'Sagittarius', 'Scorpius', 'Sculptor', 'Scutum', 'Serpens', 'Sextans', 'Taurus',
+      'Telescopium', 'Triangulum', 'Triangulum Australe', 'Tucana', 'Ursa Major',
+      'Ursa Minor', 'Vela', 'Virgo', 'Volans', 'Vulpecula',
+    ];
+
+    const ACH_KEY = 'starsolver_ach';
+
+    function loadAch() {
+      const defaults = { images: 0, imageFiles: [], constellations: [], specials: [], faintest: null };
+      try {
+        const a = { ...defaults, ...JSON.parse(localStorage.getItem(ACH_KEY) || '{}') };
+        if (a.planets && !a.specials.length) { a.specials = a.planets; delete a.planets; saveAch(a); }
+        return a;
+      } catch { return defaults; }
+    }
+    function saveAch(a) { localStorage.setItem(ACH_KEY, JSON.stringify(a)); }
+
+    const IMAGES_KEY = 'starsolver_images';
+
+    function saveImageStore() {
+      const data = [];
+      imageStore.forEach((rec, filename) => {
+        data.push({ filename, ra: rec.ra, dec: rec.dec, fov: rec.fov, plate: rec.plate });
+      });
+      localStorage.setItem(IMAGES_KEY, JSON.stringify(data));
+    }
+
+    function loadImageStore() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(IMAGES_KEY) || '[]');
+        saved.forEach(({ filename, ra, dec, fov, plate }) => {
+          if (!imageStore.has(filename))
+            imageStore.set(filename, { bytes: null, ra, dec, fov, plate });
+        });
+      } catch { }
+    }
+
+    function updateAchievements({ constellations, specials, faintest, imageFile } = {}) {
+      const a = loadAch();
+      if (!a.imageFiles) a.imageFiles = [];
+
+      if (imageFile && !a.imageFiles.includes(imageFile)) {
+        a.imageFiles.push(imageFile);
+        a.images += 1;
+      }
+      if (constellations && constellations.length) {
+        const seen = new Set(a.constellations);
+        constellations.forEach(c => seen.add(c));
+        a.constellations = [...seen];
+      }
+      if (specials && specials.length) {
+        const seen = new Set(a.specials || []);
+        specials.forEach(s => seen.add(s));
+        a.specials = [...seen];
+      }
+      if (faintest != null && (a.faintest === null || faintest > a.faintest)) {
+        a.faintest = faintest;
+      }
+      saveAch(a);
+    }
+
+    function formatTimespan(ms) {
+      const s = ms / 1000;
+      if (s < 60) return `${Math.round(s)}s`;
+      const m = s / 60;
+      if (m < 60) return `${Math.round(m)}m`;
+      const h = m / 60;
+      if (h < 24) return `${Math.round(h)}h`;
+      const d = h / 24;
+      if (d < 30) return `${Math.round(d)} day${Math.round(d) !== 1 ? 's' : ''}`;
+      const mo = d / 30.44;
+      if (mo < 12) return `${Math.round(mo)} month${Math.round(mo) !== 1 ? 's' : ''}`;
+      const yr = d / 365.25;
+      return `${yr.toFixed(1)} year${parseFloat(yr.toFixed(1)) !== 1.0 ? 's' : ''}`;
+    }
+
+    function renderAchievements() {
+      const a = loadAch();
+      const seen = new Set(a.constellations);
+
+      document.getElementById('achImages').textContent = a.images;
+      document.getElementById('achConsCount').textContent = seen.size;
+      document.getElementById('achFaintest').textContent =
+        a.faintest != null ? a.faintest.toFixed(1) + 'm' : '—';
+
+      const tms = [];
+      imageStore.forEach(rec => {
+        const ts = rec.plate && rec.plate.timestamp;
+        if (ts) tms.push(new Date(ts).getTime());
+      });
+      let timespanText = 'Unknown';
+      if (tms.length >= 2) {
+        const span = Math.max(...tms) - Math.min(...tms);
+        timespanText = span === 0 ? '0s' : formatTimespan(span);
+      } else if (tms.length === 1) {
+        timespanText = '-';
+      }
+      document.getElementById('achTimespan').textContent = timespanText;
+
+      const list = document.getElementById('achConsList');
+      if (!list.children.length) {
+        CONS_ALL.forEach(name => {
+          const span = document.createElement('span');
+          span.className = 'cons-tag';
+          span.dataset.cons = name;
+          span.textContent = name;
+          list.appendChild(span);
+        });
+      }
+      list.querySelectorAll('.cons-tag').forEach(el => {
+        el.classList.toggle('seen', seen.has(el.dataset.cons));
+      });
+
+      // Planets
+      const ALL_PLANETS = ['Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'];
+      const seenSpecials = new Set(a.specials || []);
+      const seenPlanets = ALL_PLANETS.filter(p => seenSpecials.has(p));
+      document.getElementById('achPlanetCount').textContent = seenPlanets.length;
+      document.getElementById('achPlanetList').innerHTML = ALL_PLANETS.map(s =>
+        `<span class="cons-tag${seenSpecials.has(s) ? ' seen' : ''}">${s}</span>`
+      ).join('');
+
+      // Other objects (Messier objects, etc.) — only show observed ones
+      const seenOther = [...seenSpecials].filter(s => !ALL_PLANETS.includes(s));
+      const oSection = document.getElementById('achOtherSection');
+      const oList = document.getElementById('achOtherList');
+      if (seenOther.length) {
+        oSection.style.display = '';
+        oList.innerHTML = seenOther.map(s =>
+          `<span class="cons-tag seen">${s}</span>`
+        ).join('');
+      } else {
+        oSection.style.display = 'none';
+      }
+
+      // Processed images (session)
+      const imgList = document.getElementById('achImageList');
+      imgList.innerHTML = '';
+      document.getElementById('achImageCount').textContent = imageStore.size;
+      if (imageStore.size === 0) {
+        imgList.innerHTML = '<div style="font-size:11px;color:#404060;padding:4px 0">No images solved</div>';
+      } else {
+        imageStore.forEach((rec, name) => {
+          const row = document.createElement('div');
+          row.className = 'ach-img-row';
+          row.innerHTML = `
         <div class="ach-img-info">
           <span class="ach-img-name">${name}</span>
           <span class="ach-img-coords">RA ${rec.ra.toFixed(1)}°  Dec ${rec.dec.toFixed(1)}°  FOV ${rec.fov.toFixed(1)}°</span>
         </div>
         <button class="ach-img-btn" data-key="${name}">${rec.bytes ? '+ Pano' : '↑ Pano'}</button>`;
-      imgList.appendChild(row);
-    });
-  }
-}
-
-const btnAchievements = document.getElementById('btnAchievements');
-btnAchievements.addEventListener('click', () => {
-  const panel    = document.getElementById('achievements-panel');
-  const settings = document.getElementById('settings-panel');
-  settings.classList.remove('open');
-  btnSettings.classList.remove('active');
-  const isOpen = panel.classList.toggle('open');
-  btnAchievements.classList.toggle('active', isOpen);
-  if (isOpen) renderAchievements();
-});
-
-document.getElementById('btnResetAch').addEventListener('click', () => {
-  if (!confirm('Reset all achievements? This cannot be undone.')) return;
-  localStorage.removeItem(ACH_KEY);
-  localStorage.removeItem(IMAGES_KEY);
-  imageStore.clear();
-  renderAchievements();
-});
-
-document.getElementById('btnResetPano').addEventListener('click', () => {
-  if (!confirm('Clear the panorama? All added images will be removed.')) return;
-  const _ps = loadPanoSettings();
-  pyodide.runPython(`pano = Panorama(width=${_ps.resolution}, blend='${_ps.blend}')`);
-  pano = pyodide.globals.get('pano');
-  btnViewPano.disabled   = true;
-  btnExportPano.disabled = true;
-  setStatus('Panorama reset.');
-});
-
-// ── settings ──────────────────────────────────────────────────────────────────
-const SETTINGS_KEY = 'starsolver_draw';
-
-const DEFAULTS = {
-  starCatalog:            'hipparcos',
-  starRadius:             25,
-  constellationColor:     '#ffb400',
-  constellationThickness: 4,
-  maskConstellations:     false,
-  showTimestamp:          false,
-  showUnidentified:       true,
-  textSize:               48,
-  matchColor:             '#ffb400',
-  unknownColor:           '#c83232',
-  specialColor:           '#0064ff',
-  circleThickness:        2,
-  detectionColor:         '#00ff00',
-};
-
-function hexToRgb(hex) {
-  return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
-}
-function hexAsTuple(hex) {
-  const [r, g, b] = hexToRgb(hex);
-  return pyodide.runPython(`(${r}, ${g}, ${b})`);
-}
-
-function loadSettings() {
-  try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }
-  catch { return { ...DEFAULTS }; }
-}
-
-function saveSettings(s) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
-
-function applySettings(s) {
-  const d = pipeline.config.draw;
-
-  document.getElementById('cfgStarRadius').value              = s.starRadius;
-  document.getElementById('cfgStarRadiusVal').textContent     = s.starRadius;
-  d.star_radius = s.starRadius;
-
-  document.getElementById('cfgConstellationColor').value                  = s.constellationColor;
-  document.getElementById('cfgConstellationThickness').value              = s.constellationThickness;
-  document.getElementById('cfgConstellationThicknessVal').textContent     = s.constellationThickness;
-  d.constellation_color     = hexAsTuple(s.constellationColor);
-  d.constellation_thickness = s.constellationThickness;
-
-  document.getElementById('cfgMatchColor').value              = s.matchColor;
-  document.getElementById('cfgUnknownColor').value            = s.unknownColor;
-  document.getElementById('cfgCircleThickness').value         = s.circleThickness;
-  document.getElementById('cfgCircleThicknessVal').textContent = s.circleThickness;
-  d.match_color      = hexAsTuple(s.matchColor);
-  d.unknown_color    = hexAsTuple(s.unknownColor);
-  d.circle_thickness = s.circleThickness;
-
-  document.getElementById('cfgDetectionColor').value = s.detectionColor;
-  d.detection_color = hexAsTuple(s.detectionColor);
-
-  document.getElementById('cfgMaskConstellations').checked = s.maskConstellations;
-  d.mask_constellations = s.maskConstellations;
-
-  document.getElementById('cfgShowTimestamp').checked = s.showTimestamp;
-  d.show_timestamp = s.showTimestamp;
-
-  document.getElementById('cfgShowUnidentified').checked = s.showUnidentified !== false;
-  d.show_unknown = s.showUnidentified !== false;
-
-  document.getElementById('cfgCatalog').value = s.starCatalog || 'hipparcos';
-
-  document.getElementById('cfgSpecialColor').value = s.specialColor;
-  d.special_color = hexAsTuple(s.specialColor);
-
-  document.getElementById('cfgTextSize').value         = s.textSize;
-  document.getElementById('cfgTextSizeVal').textContent = s.textSize;
-  d.text_size = s.textSize;
-}
-
-async function loadExtendedCatalog() {
-  try {
-    setStatus('Downloading extended star catalog (17 MB)…');
-    pyodide.FS.writeFile('/ss/tycho2_extended.npz',
-                         await fetchBinary(`${CDN_SS}/tycho2_extended.npz`));
-    await pyodide.runPythonAsync(
-      `import catalog; catalog.set_catalog_path('/ss/tycho2_extended.npz')`);
-    setStatus('Star catalog: Hipparcos + Tycho-2 (2M stars).');
-  } catch (err) {
-    setStatus('Extended catalog download failed: ' + (err.message || err));
-    const s = loadSettings(); s.starCatalog = 'hipparcos'; saveSettings(s);
-    document.getElementById('cfgCatalog').value = 'hipparcos';
-  }
-}
-
-function initSettings() {
-  applySettings(loadSettings());
-
-  function wireSlider(id, valId, key, apply) {
-    const el = document.getElementById(id);
-    const vl = document.getElementById(valId);
-    el.addEventListener('input', () => {
-      const v = parseInt(el.value);
-      vl.textContent = v;
-      apply(v);
-      const s = loadSettings(); s[key] = v; saveSettings(s);
-    });
-  }
-
-  function wireColor(id, key, apply) {
-    document.getElementById(id).addEventListener('input', e => {
-      apply(hexAsTuple(e.target.value));
-      const s = loadSettings(); s[key] = e.target.value; saveSettings(s);
-    });
-  }
-
-  wireSlider('cfgStarRadius',             'cfgStarRadiusVal',             'starRadius',             v => pipeline.config.draw.star_radius             = v);
-  wireSlider('cfgConstellationThickness', 'cfgConstellationThicknessVal', 'constellationThickness', v => pipeline.config.draw.constellation_thickness = v);
-  wireSlider('cfgCircleThickness',        'cfgCircleThicknessVal',        'circleThickness',        v => pipeline.config.draw.circle_thickness        = v);
-  wireColor('cfgConstellationColor', 'constellationColor', v => pipeline.config.draw.constellation_color = v);
-
-  document.getElementById('cfgMaskConstellations').addEventListener('change', e => {
-    pipeline.config.draw.mask_constellations = e.target.checked;
-    const s = loadSettings(); s.maskConstellations = e.target.checked; saveSettings(s);
-  });
-
-  document.getElementById('cfgShowTimestamp').addEventListener('change', e => {
-    pipeline.config.draw.show_timestamp = e.target.checked;
-    const s = loadSettings(); s.showTimestamp = e.target.checked; saveSettings(s);
-  });
-
-  document.getElementById('cfgShowUnidentified').addEventListener('change', e => {
-    pipeline.config.draw.show_unknown = e.target.checked;
-    const s = loadSettings(); s.showUnidentified = e.target.checked; saveSettings(s);
-  });
-
-  wireSlider('cfgTextSize', 'cfgTextSizeVal', 'textSize', v => pipeline.config.draw.text_size = v);
-
-  wireColor('cfgMatchColor',     'matchColor',     v => pipeline.config.draw.match_color     = v);
-  wireColor('cfgUnknownColor',   'unknownColor',   v => pipeline.config.draw.unknown_color   = v);
-  wireColor('cfgSpecialColor',   'specialColor',   v => pipeline.config.draw.special_color   = v);
-  wireColor('cfgDetectionColor', 'detectionColor', v => pipeline.config.draw.detection_color = v);
-
-  document.getElementById('cfgCatalog').addEventListener('change', async e => {
-    const val = e.target.value;
-    const s = loadSettings(); s.starCatalog = val; saveSettings(s);
-    if (val === 'tycho2') {
-      await loadExtendedCatalog();
-    } else {
-      await pyodide.runPythonAsync(`import catalog; catalog.set_catalog_path(None)`);
-      setStatus('Star catalog: Hipparcos.');
-    }
-  });
-
-  document.getElementById('btnResetSettings').addEventListener('click', () => {
-    localStorage.removeItem(SETTINGS_KEY);
-    localStorage.removeItem(PANO_KEY);
-    applySettings({ ...DEFAULTS });
-    document.getElementById('cfgPanoGrid').checked  = PANO_DEFAULTS.showGrid;
-    document.getElementById('cfgPanoCons').value    = PANO_DEFAULTS.constellations;
-    document.getElementById('cfgPanoRes').value     = PANO_DEFAULTS.resolution.toString();
-    document.getElementById('cfgPanoBlend').value   = PANO_DEFAULTS.blend;
-    pyodide.runPythonAsync(`import catalog; catalog.set_catalog_path(None)`);
-  });
-
-  // Panorama config (takes effect on next View panorama)
-  const ps = loadPanoSettings();
-  document.getElementById('cfgPanoGrid').checked  = ps.showGrid;
-  document.getElementById('cfgPanoCons').value    = ps.constellations;
-  document.getElementById('cfgPanoRes').value     = ps.resolution.toString();
-  document.getElementById('cfgPanoBlend').value   = ps.blend;
-
-  document.getElementById('cfgPanoGrid').addEventListener('change', e => {
-    savePanoSettings({ ...loadPanoSettings(), showGrid: e.target.checked });
-  });
-  document.getElementById('cfgPanoCons').addEventListener('change', e => {
-    savePanoSettings({ ...loadPanoSettings(), constellations: e.target.value });
-  });
-  document.getElementById('cfgPanoRes').addEventListener('change', e => {
-    savePanoSettings({ ...loadPanoSettings(), resolution: parseInt(e.target.value) });
-  });
-  document.getElementById('cfgPanoBlend').addEventListener('change', e => {
-    savePanoSettings({ ...loadPanoSettings(), blend: e.target.value });
-  });
-}
-
-btnSettings.addEventListener('click', () => {
-  const panel = document.getElementById('settings-panel');
-  const ach   = document.getElementById('achievements-panel');
-  ach.classList.remove('open');
-  btnAchievements.classList.remove('active');
-  const isOpen = panel.classList.toggle('open');
-  btnSettings.classList.toggle('active', isOpen);
-});
-
-// ── Pyodide initialisation ────────────────────────────────────────────────────
-// When served from localhost, load Python source from the local repo instead
-// of CDN so that edits are reflected immediately without committing.
-const _LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
-           || location.protocol === 'file:';
-const CDN_SS  = _LOCAL
-  ? '../starsolver'
-  : 'https://cdn.jsdelivr.net/gh/vadim-v-lebedev/starsolver@main/starsolver';
-const CDN_T3  = 'https://cdn.jsdelivr.net/gh/vadim-v-lebedev/tetra3@master/tetra3';
-
-const SS_FILES = ['pipeline.py','detector.py','solver.py','refine.py',
-                  'plate.py','draw.py','catalog.py','minicv.py','config.py',
-                  'panorama.py','planets.py','deepsky.py'];
-const T3_FILES = ['__init__.py','tetra3.py'];
-
-async function initPyodide() {
-  try {
-    setProgress(5);
-    setStatus('Loading Pyodide…');
-    pyodide = await loadPyodide();
-
-    setProgress(20);
-    setStatus('Loading numpy · Pillow…');
-    await pyodide.loadPackage(['numpy', 'Pillow']);
-
-    setProgress(40);
-    setStatus('Fetching starsolver source…');
-    pyodide.FS.mkdir('/ss');
-    for (const f of SS_FILES) {
-      pyodide.FS.writeFile(`/ss/${f}`, await fetchText(`${CDN_SS}/${f}`));
-    }
-    pyodide.FS.writeFile('/ss/DejaVuSans.ttf',
-                         await fetchBinary(`${CDN_SS}/DejaVuSans.ttf`));
-    pyodide.FS.writeFile('/ss/messier.csv',
-                         await fetchText(`${CDN_SS}/messier.csv`));
-    pyodide.FS.writeFile('/ss/bayer.csv',
-                         await fetchText(`${CDN_SS}/bayer.csv`));
-    pyodide.FS.writeFile('/ss/constellation_borders.npz',
-                         await fetchBinary(`${CDN_SS}/constellation_borders.npz`));
-
-    setStatus('Fetching tetra3…');
-    pyodide.FS.mkdir('/ss/tetra3');
-    for (const f of T3_FILES) {
-      pyodide.FS.writeFile(`/ss/tetra3/${f}`, await fetchText(`${CDN_T3}/${f}`));
+          imgList.appendChild(row);
+        });
+      }
     }
 
-    setProgress(55);
-    setStatus('Fetching star catalog…');
-    pyodide.FS.writeFile('/ss/hip.npz', await fetchBinary(`${CDN_SS}/hip.npz`));
+    const btnAchievements = document.getElementById('btnAchievements');
+    btnAchievements.addEventListener('click', () => {
+      const panel = document.getElementById('achievements-panel');
+      const settings = document.getElementById('settings-panel');
+      settings.classList.remove('open');
+      btnSettings.classList.remove('active');
+      const isOpen = panel.classList.toggle('open');
+      btnAchievements.classList.toggle('active', isOpen);
+      if (isOpen) renderAchievements();
+    });
 
-    setProgress(70);
-    setStatus('Fetching pattern database…');
-    pyodide.FS.writeFile('/ss/tetra3_database.npz',
-                         await fetchBinary(`${CDN_SS}/tetra3_database.npz`));
+    document.getElementById('btnResetAch').addEventListener('click', () => {
+      if (!confirm('Reset all achievements? This cannot be undone.')) return;
+      localStorage.removeItem(ACH_KEY);
+      localStorage.removeItem(IMAGES_KEY);
+      imageStore.clear();
+      renderAchievements();
+    });
 
-    setProgress(90);
-    setStatus('Initialising pipeline…');
-    const _initPs = loadPanoSettings();
-    await pyodide.runPythonAsync(`
+    document.getElementById('btnResetPano').addEventListener('click', () => {
+      if (!confirm('Clear the panorama? All added images will be removed.')) return;
+      const _ps = loadPanoSettings();
+      pyodide.runPython(`pano = Panorama(width=${_ps.resolution}, blend='${_ps.blend}')`);
+      pano = pyodide.globals.get('pano');
+      btnViewPano.disabled = true;
+      btnExportPano.disabled = true;
+      setStatus('Panorama reset.');
+    });
+
+    // ── settings ──────────────────────────────────────────────────────────────────
+    const SETTINGS_KEY = 'starsolver_draw';
+
+    const DEFAULTS = {
+      starCatalog: 'hipparcos',
+      starRadius: 25,
+      constellationColor: '#ffb400',
+      constellationThickness: 4,
+      maskConstellations: false,
+      showTimestamp: false,
+      showUnidentified: true,
+      textSize: 48,
+      matchColor: '#ffb400',
+      unknownColor: '#c83232',
+      specialColor: '#0064ff',
+      circleThickness: 2,
+      detectionColor: '#00ff00',
+    };
+
+    function hexToRgb(hex) {
+      return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+    }
+    function hexAsTuple(hex) {
+      const [r, g, b] = hexToRgb(hex);
+      return pyodide.runPython(`(${r}, ${g}, ${b})`);
+    }
+
+    function loadSettings() {
+      try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }
+      catch { return { ...DEFAULTS }; }
+    }
+
+    function saveSettings(s) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
+
+    function applySettings(s) {
+      const d = pipeline.config.draw;
+
+      document.getElementById('cfgStarRadius').value = s.starRadius;
+      document.getElementById('cfgStarRadiusVal').textContent = s.starRadius;
+      d.star_radius = s.starRadius;
+
+      document.getElementById('cfgConstellationColor').value = s.constellationColor;
+      document.getElementById('cfgConstellationThickness').value = s.constellationThickness;
+      document.getElementById('cfgConstellationThicknessVal').textContent = s.constellationThickness;
+      d.constellation_color = hexAsTuple(s.constellationColor);
+      d.constellation_thickness = s.constellationThickness;
+
+      document.getElementById('cfgMatchColor').value = s.matchColor;
+      document.getElementById('cfgUnknownColor').value = s.unknownColor;
+      document.getElementById('cfgCircleThickness').value = s.circleThickness;
+      document.getElementById('cfgCircleThicknessVal').textContent = s.circleThickness;
+      d.match_color = hexAsTuple(s.matchColor);
+      d.unknown_color = hexAsTuple(s.unknownColor);
+      d.circle_thickness = s.circleThickness;
+
+      document.getElementById('cfgDetectionColor').value = s.detectionColor;
+      d.detection_color = hexAsTuple(s.detectionColor);
+
+      document.getElementById('cfgMaskConstellations').checked = s.maskConstellations;
+      d.mask_constellations = s.maskConstellations;
+
+      document.getElementById('cfgShowTimestamp').checked = s.showTimestamp;
+      d.show_timestamp = s.showTimestamp;
+
+      document.getElementById('cfgShowUnidentified').checked = s.showUnidentified !== false;
+      d.show_unknown = s.showUnidentified !== false;
+
+      document.getElementById('cfgCatalog').value = s.starCatalog || 'hipparcos';
+
+      document.getElementById('cfgSpecialColor').value = s.specialColor;
+      d.special_color = hexAsTuple(s.specialColor);
+
+      document.getElementById('cfgTextSize').value = s.textSize;
+      document.getElementById('cfgTextSizeVal').textContent = s.textSize;
+      d.text_size = s.textSize;
+    }
+
+    async function loadExtendedCatalog() {
+      try {
+        setStatus('Downloading extended star catalog (17 MB)…');
+        pyodide.FS.writeFile('/ss/tycho2_extended.npz',
+          await fetchBinary(`${CDN_SS}/tycho2_extended.npz`));
+        await pyodide.runPythonAsync(
+          `import catalog; catalog.set_catalog_path('/ss/tycho2_extended.npz')`);
+        setStatus('Star catalog: Hipparcos + Tycho-2 (2M stars).');
+      } catch (err) {
+        setStatus('Extended catalog download failed: ' + (err.message || err));
+        const s = loadSettings(); s.starCatalog = 'hipparcos'; saveSettings(s);
+        document.getElementById('cfgCatalog').value = 'hipparcos';
+      }
+    }
+
+    function initSettings() {
+      applySettings(loadSettings());
+
+      function wireSlider(id, valId, key, apply) {
+        const el = document.getElementById(id);
+        const vl = document.getElementById(valId);
+        el.addEventListener('input', () => {
+          const v = parseInt(el.value);
+          vl.textContent = v;
+          apply(v);
+          const s = loadSettings(); s[key] = v; saveSettings(s);
+        });
+      }
+
+      function wireColor(id, key, apply) {
+        document.getElementById(id).addEventListener('input', e => {
+          apply(hexAsTuple(e.target.value));
+          const s = loadSettings(); s[key] = e.target.value; saveSettings(s);
+        });
+      }
+
+      wireSlider('cfgStarRadius', 'cfgStarRadiusVal', 'starRadius', v => pipeline.config.draw.star_radius = v);
+      wireSlider('cfgConstellationThickness', 'cfgConstellationThicknessVal', 'constellationThickness', v => pipeline.config.draw.constellation_thickness = v);
+      wireSlider('cfgCircleThickness', 'cfgCircleThicknessVal', 'circleThickness', v => pipeline.config.draw.circle_thickness = v);
+      wireColor('cfgConstellationColor', 'constellationColor', v => pipeline.config.draw.constellation_color = v);
+
+      document.getElementById('cfgMaskConstellations').addEventListener('change', e => {
+        pipeline.config.draw.mask_constellations = e.target.checked;
+        const s = loadSettings(); s.maskConstellations = e.target.checked; saveSettings(s);
+      });
+
+      document.getElementById('cfgShowTimestamp').addEventListener('change', e => {
+        pipeline.config.draw.show_timestamp = e.target.checked;
+        const s = loadSettings(); s.showTimestamp = e.target.checked; saveSettings(s);
+      });
+
+      document.getElementById('cfgShowUnidentified').addEventListener('change', e => {
+        pipeline.config.draw.show_unknown = e.target.checked;
+        const s = loadSettings(); s.showUnidentified = e.target.checked; saveSettings(s);
+      });
+
+      wireSlider('cfgTextSize', 'cfgTextSizeVal', 'textSize', v => pipeline.config.draw.text_size = v);
+
+      wireColor('cfgMatchColor', 'matchColor', v => pipeline.config.draw.match_color = v);
+      wireColor('cfgUnknownColor', 'unknownColor', v => pipeline.config.draw.unknown_color = v);
+      wireColor('cfgSpecialColor', 'specialColor', v => pipeline.config.draw.special_color = v);
+      wireColor('cfgDetectionColor', 'detectionColor', v => pipeline.config.draw.detection_color = v);
+
+      document.getElementById('cfgCatalog').addEventListener('change', async e => {
+        const val = e.target.value;
+        const s = loadSettings(); s.starCatalog = val; saveSettings(s);
+        if (val === 'tycho2') {
+          await loadExtendedCatalog();
+        } else {
+          await pyodide.runPythonAsync(`import catalog; catalog.set_catalog_path(None)`);
+          setStatus('Star catalog: Hipparcos.');
+        }
+      });
+
+      document.getElementById('btnResetSettings').addEventListener('click', () => {
+        localStorage.removeItem(SETTINGS_KEY);
+        localStorage.removeItem(PANO_KEY);
+        applySettings({ ...DEFAULTS });
+        document.getElementById('cfgPanoGrid').checked = PANO_DEFAULTS.showGrid;
+        document.getElementById('cfgPanoCons').value = PANO_DEFAULTS.constellations;
+        document.getElementById('cfgPanoRes').value = PANO_DEFAULTS.resolution.toString();
+        document.getElementById('cfgPanoBlend').value = PANO_DEFAULTS.blend;
+        pyodide.runPythonAsync(`import catalog; catalog.set_catalog_path(None)`);
+      });
+
+      // Panorama config (takes effect on next View panorama)
+      const ps = loadPanoSettings();
+      document.getElementById('cfgPanoGrid').checked = ps.showGrid;
+      document.getElementById('cfgPanoCons').value = ps.constellations;
+      document.getElementById('cfgPanoRes').value = ps.resolution.toString();
+      document.getElementById('cfgPanoBlend').value = ps.blend;
+
+      document.getElementById('cfgPanoGrid').addEventListener('change', e => {
+        savePanoSettings({ ...loadPanoSettings(), showGrid: e.target.checked });
+      });
+      document.getElementById('cfgPanoCons').addEventListener('change', e => {
+        savePanoSettings({ ...loadPanoSettings(), constellations: e.target.value });
+      });
+      document.getElementById('cfgPanoRes').addEventListener('change', e => {
+        savePanoSettings({ ...loadPanoSettings(), resolution: parseInt(e.target.value) });
+      });
+      document.getElementById('cfgPanoBlend').addEventListener('change', e => {
+        savePanoSettings({ ...loadPanoSettings(), blend: e.target.value });
+      });
+    }
+
+    btnSettings.addEventListener('click', () => {
+      const panel = document.getElementById('settings-panel');
+      const ach = document.getElementById('achievements-panel');
+      ach.classList.remove('open');
+      btnAchievements.classList.remove('active');
+      const isOpen = panel.classList.toggle('open');
+      btnSettings.classList.toggle('active', isOpen);
+    });
+
+    // ── Pyodide initialisation ────────────────────────────────────────────────────
+    // When served from localhost, load Python source from the local repo instead
+    // of CDN so that edits are reflected immediately without committing.
+    const _LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+      || location.protocol === 'file:';
+    const CDN_SS = _LOCAL
+      ? '../starsolver'
+      : 'https://cdn.jsdelivr.net/gh/vadim-v-lebedev/starsolver@main/starsolver';
+    const CDN_T3 = 'https://cdn.jsdelivr.net/gh/vadim-v-lebedev/tetra3@master/tetra3';
+
+    const SS_FILES = ['pipeline.py', 'detector.py', 'solver.py', 'refine.py',
+      'plate.py', 'draw.py', 'catalog.py', 'minicv.py', 'config.py',
+      'panorama.py', 'planets.py', 'deepsky.py'];
+    const T3_FILES = ['__init__.py', 'tetra3.py'];
+
+    async function initPyodide() {
+      try {
+        setProgress(5);
+        setStatus('Loading Pyodide…');
+        pyodide = await loadPyodide();
+
+        setProgress(20);
+        setStatus('Loading numpy · Pillow…');
+        await pyodide.loadPackage(['numpy', 'Pillow']);
+
+        setProgress(40);
+        setStatus('Fetching starsolver source…');
+        pyodide.FS.mkdir('/ss');
+        for (const f of SS_FILES) {
+          pyodide.FS.writeFile(`/ss/${f}`, await fetchText(`${CDN_SS}/${f}`));
+        }
+        pyodide.FS.writeFile('/ss/DejaVuSans.ttf',
+          await fetchBinary(`${CDN_SS}/DejaVuSans.ttf`));
+        pyodide.FS.writeFile('/ss/messier.csv',
+          await fetchText(`${CDN_SS}/messier.csv`));
+        pyodide.FS.writeFile('/ss/bayer.csv',
+          await fetchText(`${CDN_SS}/bayer.csv`));
+        pyodide.FS.writeFile('/ss/constellation_borders.npz',
+          await fetchBinary(`${CDN_SS}/constellation_borders.npz`));
+
+        setStatus('Fetching tetra3…');
+        pyodide.FS.mkdir('/ss/tetra3');
+        for (const f of T3_FILES) {
+          pyodide.FS.writeFile(`/ss/tetra3/${f}`, await fetchText(`${CDN_T3}/${f}`));
+        }
+
+        setProgress(55);
+        setStatus('Fetching star catalog…');
+        pyodide.FS.writeFile('/ss/hip.npz', await fetchBinary(`${CDN_SS}/hip.npz`));
+
+        setProgress(70);
+        setStatus('Fetching pattern database…');
+        pyodide.FS.writeFile('/ss/tetra3_database.npz',
+          await fetchBinary(`${CDN_SS}/tetra3_database.npz`));
+
+        setProgress(90);
+        setStatus('Initialising pipeline…');
+        const _initPs = loadPanoSettings();
+        await pyodide.runPythonAsync(`
 import sys
 sys.path.insert(0, '/ss')
 from pipeline import Pipeline
@@ -1248,569 +1464,569 @@ from panorama import Panorama
 pipeline = Pipeline()
 pano     = Panorama(width=${_initPs.resolution}, blend='${_initPs.blend}')
 `);
-    pipeline = pyodide.globals.get('pipeline');
-    pano     = pyodide.globals.get('pano');
-    initSettings();
-    loadImageStore();
+        pipeline = pyodide.globals.get('pipeline');
+        pano = pyodide.globals.get('pano');
+        initSettings();
+        loadImageStore();
 
-    if (loadSettings().starCatalog === 'tycho2') {
-      setProgress(92);
-      await loadExtendedCatalog();
+        if (loadSettings().starCatalog === 'tycho2') {
+          setProgress(92);
+          await loadExtendedCatalog();
+        }
+
+        setProgress(100);
+        await sleep(300);
+        setProgress(null);
+        setStatus('Ready — pick or take an image.');
+        setButtons({ load: true, settings: true, achievements: true });
+
+      } catch (e) {
+        setProgress(null);
+        setStatus('Init failed: ' + (e.message || e));
+        console.error(e);
+      }
     }
 
-    setProgress(100);
-    await sleep(300);
-    setProgress(null);
-    setStatus('Ready — pick or take an image.');
-    setButtons({ load: true, settings: true, achievements: true });
-
-  } catch (e) {
-    setProgress(null);
-    setStatus('Init failed: ' + (e.message || e));
-    console.error(e);
-  }
-}
-
-// ── image loading ─────────────────────────────────────────────────────────────
-async function onImageFile(file) {
-  const buf = await file.arrayBuffer();
-  currentImageBytes = new Uint8Array(buf);
-  pyodide.FS.writeFile(imagePath, currentImageBytes);
-  showImage(currentImageBytes);
-  currentImageFile      = file.name;
-  starsOk               = false;
-  solvedOk              = false;
-  solveUnlimited        = false;
-  currentImageTimestamp = null;
-  detectThreshold       = 20.0;
-  currentObjects        = null;
-  hidePopup();
-  btnDetect.textContent = 'Detect';
-  btnSolve.textContent  = 'Solve';
-  setButtons({ load: true, detect: true, settings: true, achievements: true });
-  setStatus('Image loaded. Tap Detect.');
-
-  // Read EXIF (timestamp + FOV estimate); fall back to file.lastModified for timestamp
-  currentFovEstimate = null;
-  pyodide.runPython('pipeline.fov_hint = None; pipeline.detection_mask = None');
-  try {
-    const exif = JSON.parse(pyodide.runPython(
-      `import json; json.dumps(pipeline.read_exif('${imagePath}'))`));
-    currentImageTimestamp = exif.timestamp ||
-      (file.lastModified ? new Date(file.lastModified).toISOString() : null);
-    currentFovEstimate = exif.fov_estimate;
-  } catch {
-    currentImageTimestamp = file.lastModified ? new Date(file.lastModified).toISOString() : null;
-  }
-  setFovSlider({ enabled: true, value: currentFovEstimate });
-  fovHintOn = currentFovEstimate !== null;
-  elFovHintEnabled.checked = fovHintOn;
-  elFovSlider.disabled = !fovHintOn;
-}
-
-document.getElementById('inputGallery').addEventListener('change', e => {
-  if (e.target.files[0]) onImageFile(e.target.files[0]);
-  e.target.value = '';
-});
-
-btnLoad.addEventListener('click', () => document.getElementById('inputGallery').click());
-
-// ── detect ────────────────────────────────────────────────────────────────────
-btnDetect.addEventListener('click', async () => {
-  if (busy || !pipeline) return;
-  setBusy(true);
-  const thr = detectThreshold;
-  setStatus(`Detecting stars (threshold=${thr})…`);
-  await sleep(30);
-
-  try {
-    const r   = pipeline.detect(imagePath, outputPath, thr);
-    const n   = r.get('count');
-    const msg = r.get('message').toString();
-    r.destroy();
-
-    showImage(pyodide.FS.readFile(outputPath));
-    detectThreshold = thr / 2;
-    btnDetect.textContent = 'Detect more';
-    solvedOk       = false;
-    solveUnlimited = false;
-    btnSolve.textContent = 'Solve';
-    setFovSlider({ enabled: true });
-
-    const hint = n < 4
-      ? `\nToo few stars — tap Detect more (threshold=${detectThreshold.toFixed(0)})`
-      : '';
-    starsOk = n >= 1;
-    setStatus(`${msg} · threshold=${thr}${hint}`);
-    setButtons({ load: true, detect: true, mask: starsOk, solve: n >= 4, settings: true, achievements: true });
-
-  } catch (e) {
-    setStatus('Detect error: ' + e.message);
-    setButtons({ load: true, detect: true, settings: true, achievements: true });
-    console.error(e);
-  }
-  busy = false;
-});
-
-// ── solve ─────────────────────────────────────────────────────────────────────
-btnSolve.addEventListener('click', async () => {
-  if (busy || !pipeline) return;
-  setBusy(true);
-  setStatus(solveUnlimited ? 'Solving (no timeout)…' : 'Solving…');
-  await sleep(30);
-
-  try {
-    pyodide.runPython(`pipeline.timestamp = ${JSON.stringify(currentImageTimestamp)}`);
-    pyodide.runPython(fovHintOn
-      ? `pipeline.fov_hint = ${parseFloat(elFovSlider.value)}`
-      : 'pipeline.fov_hint = False');
-    const r      = solveUnlimited
-      ? pipeline.solve(imagePath, outputPath, 0)
-      : pipeline.solve(imagePath, outputPath);
-    const status = r.get('status').toString();
-
-    if (status === 'solved') {
-      const ra   = r.get('RA').toFixed(2);
-      const dec  = r.get('Dec').toFixed(2);
-      const fov  = r.get('FOV').toFixed(1);
-      const rmse = r.get('RMSE').toFixed(0);
-      const n    = r.get('matches');
-      const t    = (r.get('T_solve') / 1000).toFixed(1);
-      const cons = (r.get('constellations') ?? '').toString();
-      r.destroy();
-
-      showImage(pyodide.FS.readFile(outputPath));
-      setFovSlider({ enabled: false, value: parseFloat(fov) });
-      solvedOk       = true;
-      solveUnlimited = false;
-      btnSolve.textContent = 'Solve';
-      updateAchievements({ constellations: cons ? cons.split(', ') : [], imageFile: currentImageFile });
-      const plateDict = JSON.parse(pyodide.runPython('import json; json.dumps(pipeline.plate.to_dict())'));
-      imageStore.set(currentImageFile, {
-        bytes: currentImageBytes,
-        ra: parseFloat(ra), dec: parseFloat(dec), fov: parseFloat(fov),
-        plate: plateDict,
-      });
-      saveImageStore();
-      let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} matches  ${t}s`;
-      if (cons) msg += `\n${cons}`;
-      setStatus(msg);
-      setButtons({ load:true, detect:true, mask:starsOk, solve:true, refine:true, save:true, settings:true, achievements:true});
-
-    } else {
-      r.destroy();
+    // ── image loading ─────────────────────────────────────────────────────────────
+    async function onImageFile(file) {
+      const buf = await file.arrayBuffer();
+      currentImageBytes = new Uint8Array(buf);
+      pyodide.FS.writeFile(imagePath, currentImageBytes);
+      showImage(currentImageBytes);
+      currentImageFile = file.name;
+      starsOk = false;
       solvedOk = false;
-      setFovSlider({ enabled: true });
-      if (status === 'too_few_stars') {
+      solveUnlimited = false;
+      currentImageTimestamp = null;
+      detectThreshold = 20.0;
+      currentObjects = null;
+      hidePopup();
+      btnDetect.textContent = 'Detect';
+      btnSolve.textContent = 'Solve';
+      setButtons({ load: true, detect: true, settings: true, achievements: true });
+      setStatus('Image loaded. Tap Detect.');
+
+      // Read EXIF (timestamp + FOV estimate); fall back to file.lastModified for timestamp
+      currentFovEstimate = null;
+      pyodide.runPython('pipeline.fov_hint = None; pipeline.detection_mask = None');
+      try {
+        const exif = JSON.parse(pyodide.runPython(
+          `import json; json.dumps(pipeline.read_exif('${imagePath}'))`));
+        currentImageTimestamp = exif.timestamp ||
+          (file.lastModified ? new Date(file.lastModified).toISOString() : null);
+        currentFovEstimate = exif.fov_estimate;
+      } catch {
+        currentImageTimestamp = file.lastModified ? new Date(file.lastModified).toISOString() : null;
+      }
+      setFovSlider({ enabled: true, value: currentFovEstimate });
+      fovHintOn = currentFovEstimate !== null;
+      elFovHintEnabled.checked = fovHintOn;
+      elFovSlider.disabled = !fovHintOn;
+    }
+
+    document.getElementById('inputGallery').addEventListener('change', e => {
+      if (e.target.files[0]) onImageFile(e.target.files[0]);
+      e.target.value = '';
+    });
+
+    btnLoad.addEventListener('click', () => document.getElementById('inputGallery').click());
+
+    // ── detect ────────────────────────────────────────────────────────────────────
+    btnDetect.addEventListener('click', async () => {
+      if (busy || !pipeline) return;
+      setBusy(true);
+      const thr = detectThreshold;
+      setStatus(`Detecting stars (threshold=${thr})…`);
+      await sleep(30);
+
+      try {
+        const r = pipeline.detect(imagePath, outputPath, thr);
+        const n = r.get('count');
+        const msg = r.get('message').toString();
+        r.destroy();
+
+        showImage(pyodide.FS.readFile(outputPath));
+        detectThreshold = thr / 2;
+        btnDetect.textContent = 'Detect more';
+        solvedOk = false;
         solveUnlimited = false;
         btnSolve.textContent = 'Solve';
-        setStatus('Too few stars for plate solving — try Detect ÷2.');
-      } else if (solveUnlimited) {
-        setStatus('No solution found even without time limit.');
-      } else {
-        solveUnlimited = true;
-        btnSolve.textContent = 'Solve ∞';
-        setStatus('No plate solution found — tap Solve ∞ to retry without timeout.');
+        setFovSlider({ enabled: true });
+
+        const hint = n < 4
+          ? `\nToo few stars — tap Detect more (threshold=${detectThreshold.toFixed(0)})`
+          : '';
+        starsOk = n >= 1;
+        setStatus(`${msg} · threshold=${thr}${hint}`);
+        setButtons({ load: true, detect: true, mask: starsOk, solve: n >= 4, settings: true, achievements: true });
+
+      } catch (e) {
+        setStatus('Detect error: ' + e.message);
+        setButtons({ load: true, detect: true, settings: true, achievements: true });
+        console.error(e);
       }
-      setButtons({ load: true, detect: true, mask: starsOk, solve: true, settings: true, achievements: true });
-    }
+      busy = false;
+    });
 
-  } catch (e) {
-    setStatus('Solve error: ' + e.message);
-    setButtons({ load: true, detect: true, mask: starsOk, solve: true, settings: true, achievements: true });
-    console.error(e);
-  }
-  busy = false;
-});
+    // ── solve ─────────────────────────────────────────────────────────────────────
+    btnSolve.addEventListener('click', async () => {
+      if (busy || !pipeline) return;
+      setBusy(true);
+      setStatus(solveUnlimited ? 'Solving (no timeout)…' : 'Solving…');
+      await sleep(30);
 
-// ── refine ────────────────────────────────────────────────────────────────────
-btnRefine.addEventListener('click', async () => {
-  if (busy || !pipeline) return;
-  setBusy(true);
-  setStatus('Refining solution…');
-  await sleep(30);
+      try {
+        pyodide.runPython(`pipeline.timestamp = ${JSON.stringify(currentImageTimestamp)}`);
+        pyodide.runPython(fovHintOn
+          ? `pipeline.fov_hint = ${parseFloat(elFovSlider.value)}`
+          : 'pipeline.fov_hint = False');
+        const r = solveUnlimited
+          ? pipeline.solve(imagePath, outputPath, 0)
+          : pipeline.solve(imagePath, outputPath);
+        const status = r.get('status').toString();
 
-  try {
-    const r      = pipeline.refine(imagePath, outputPath);
-    const status = r.get('status').toString();
+        if (status === 'solved') {
+          const ra = r.get('RA').toFixed(2);
+          const dec = r.get('Dec').toFixed(2);
+          const fov = r.get('FOV').toFixed(1);
+          const rmse = r.get('RMSE').toFixed(0);
+          const n = r.get('matches');
+          const t = (r.get('T_solve') / 1000).toFixed(1);
+          const cons = (r.get('constellations') ?? '').toString();
+          r.destroy();
 
-    if (status === 'refined') {
-      const ra      = r.get('RA').toFixed(2);
-      const dec     = r.get('Dec').toFixed(2);
-      const fov     = r.get('FOV').toFixed(1);
-      const rmse    = r.get('RMSE').toFixed(0);
-      const n       = r.get('matches');
-      const unkn    = r.get('unknowns');
-      const lim     = r.get('mag_limit').toFixed(1);
-      const t       = (r.get('T_refine') / 1000).toFixed(1);
-      const cons        = (r.get('constellations') ?? '').toString();
-      const specials    = (r.get('specials')       ?? '').toString();
-      const objectsJson = (r.get('objects_json')   ?? '').toString();
-      r.destroy();
-      currentObjects = objectsJson ? JSON.parse(objectsJson) : null;
-      hidePopup();
+          showImage(pyodide.FS.readFile(outputPath));
+          setFovSlider({ enabled: false, value: parseFloat(fov) });
+          solvedOk = true;
+          solveUnlimited = false;
+          btnSolve.textContent = 'Solve';
+          updateAchievements({ constellations: cons ? cons.split(', ') : [], imageFile: currentImageFile });
+          const plateDict = JSON.parse(pyodide.runPython('import json; json.dumps(pipeline.plate.to_dict())'));
+          imageStore.set(currentImageFile, {
+            bytes: currentImageBytes,
+            ra: parseFloat(ra), dec: parseFloat(dec), fov: parseFloat(fov),
+            plate: plateDict,
+          });
+          saveImageStore();
+          let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} matches  ${t}s`;
+          if (cons) msg += `\n${cons}`;
+          setStatus(msg);
+          setButtons({ load: true, detect: true, mask: starsOk, solve: true, refine: true, save: true, settings: true, achievements: true });
 
-      showImage(pyodide.FS.readFile(outputPath));
-      updateAchievements({
-        constellations: cons     ? cons.split(', ')     : [],
-        specials:       specials ? specials.split(', ') : [],
-        faintest: parseFloat(lim), imageFile: currentImageFile,
+        } else {
+          r.destroy();
+          solvedOk = false;
+          setFovSlider({ enabled: true });
+          if (status === 'too_few_stars') {
+            solveUnlimited = false;
+            btnSolve.textContent = 'Solve';
+            setStatus('Too few stars for plate solving — try Detect ÷2.');
+          } else if (solveUnlimited) {
+            setStatus('No solution found even without time limit.');
+          } else {
+            solveUnlimited = true;
+            btnSolve.textContent = 'Solve ∞';
+            setStatus('No plate solution found — tap Solve ∞ to retry without timeout.');
+          }
+          setButtons({ load: true, detect: true, mask: starsOk, solve: true, settings: true, achievements: true });
+        }
+
+      } catch (e) {
+        setStatus('Solve error: ' + e.message);
+        setButtons({ load: true, detect: true, mask: starsOk, solve: true, settings: true, achievements: true });
+        console.error(e);
+      }
+      busy = false;
+    });
+
+    // ── refine ────────────────────────────────────────────────────────────────────
+    btnRefine.addEventListener('click', async () => {
+      if (busy || !pipeline) return;
+      setBusy(true);
+      setStatus('Refining solution…');
+      await sleep(30);
+
+      try {
+        const r = pipeline.refine(imagePath, outputPath);
+        const status = r.get('status').toString();
+
+        if (status === 'refined') {
+          const ra = r.get('RA').toFixed(2);
+          const dec = r.get('Dec').toFixed(2);
+          const fov = r.get('FOV').toFixed(1);
+          const rmse = r.get('RMSE').toFixed(0);
+          const n = r.get('matches');
+          const unkn = r.get('unknowns');
+          const lim = r.get('mag_limit').toFixed(1);
+          const t = (r.get('T_refine') / 1000).toFixed(1);
+          const cons = (r.get('constellations') ?? '').toString();
+          const specials = (r.get('specials') ?? '').toString();
+          const objectsJson = (r.get('objects_json') ?? '').toString();
+          r.destroy();
+          currentObjects = objectsJson ? JSON.parse(objectsJson) : null;
+          hidePopup();
+
+          showImage(pyodide.FS.readFile(outputPath));
+          updateAchievements({
+            constellations: cons ? cons.split(', ') : [],
+            specials: specials ? specials.split(', ') : [],
+            faintest: parseFloat(lim), imageFile: currentImageFile,
+          });
+          const unkStr = unkn > 0 ? `  ${unkn} unidentified` : '';
+          const plStr = specials ? `  ${specials}` : '';
+          let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} id  lim=${lim}m  ${t}s${unkStr}${plStr}`;
+          if (cons) msg += `\n${cons}`;
+          setStatus(msg);
+          setButtons({ load: true, detect: true, mask: starsOk, solve: true, refine: true, save: true, settings: true, achievements: true });
+
+        } else {
+          r.destroy();
+          setStatus('Refinement failed — try re-solving.');
+          setButtons({ load: true, detect: true, mask: starsOk, solve: solvedOk, refine: solvedOk, settings: true, achievements: true });
+        }
+
+      } catch (e) {
+        setStatus('Refine error: ' + e.message);
+        setButtons({ load: true, detect: true, mask: starsOk, solve: solvedOk, refine: solvedOk, settings: true, achievements: true });
+        console.error(e);
+      }
+      busy = false;
+    });
+
+    // ── mask editor ───────────────────────────────────────────────────────────────
+    {
+      const editor = document.getElementById('mask-editor');
+      const maskBg = document.getElementById('mask-bg');
+      const maskCanvas = document.getElementById('mask-canvas');
+      const maskCtx = maskCanvas.getContext('2d');
+      let maskErasing = false;
+      let maskDrawing = false;
+      let maskLX = 0, maskLY = 0;
+
+      function maskPointerPos(e) {
+        const r = maskCanvas.getBoundingClientRect();
+        return [e.clientX - r.left, e.clientY - r.top];
+      }
+
+      function maskStroke(x1, y1, x2, y2) {
+        const size = parseInt(document.getElementById('maskBrushSize').value);
+        maskCtx.lineWidth = size;
+        maskCtx.lineCap = 'round';
+        maskCtx.lineJoin = 'round';
+        maskCtx.globalCompositeOperation = maskErasing ? 'destination-out' : 'source-over';
+        maskCtx.strokeStyle = maskErasing ? 'rgba(0,0,0,1)' : 'rgba(220,50,50,0.55)';
+        maskCtx.beginPath();
+        maskCtx.moveTo(x1, y1);
+        maskCtx.lineTo(x2, y2);
+        maskCtx.stroke();
+      }
+
+      maskCanvas.addEventListener('pointerdown', e => {
+        maskDrawing = true;
+        maskCanvas.setPointerCapture(e.pointerId);
+        const [x, y] = maskPointerPos(e);
+        maskLX = x; maskLY = y;
+        maskStroke(x, y, x, y);   // dot on tap
       });
-      const unkStr = unkn > 0 ? `  ${unkn} unidentified` : '';
-      const plStr  = specials   ? `  ${specials}` : '';
-      let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} id  lim=${lim}m  ${t}s${unkStr}${plStr}`;
-      if (cons) msg += `\n${cons}`;
-      setStatus(msg);
-      setButtons({ load:true, detect:true, mask:starsOk, solve:true, refine:true, save:true, settings:true, achievements:true});
-
-    } else {
-      r.destroy();
-      setStatus('Refinement failed — try re-solving.');
-      setButtons({ load:true, detect:true, mask:starsOk, solve:solvedOk, refine:solvedOk, settings:true, achievements:true });
-    }
-
-  } catch (e) {
-    setStatus('Refine error: ' + e.message);
-    setButtons({ load:true, detect:true, mask:starsOk, solve:solvedOk, refine:solvedOk, settings:true, achievements:true });
-    console.error(e);
-  }
-  busy = false;
-});
-
-// ── mask editor ───────────────────────────────────────────────────────────────
-{
-  const editor    = document.getElementById('mask-editor');
-  const maskBg    = document.getElementById('mask-bg');
-  const maskCanvas = document.getElementById('mask-canvas');
-  const maskCtx   = maskCanvas.getContext('2d');
-  let maskErasing = false;
-  let maskDrawing = false;
-  let maskLX = 0, maskLY = 0;
-
-  function maskPointerPos(e) {
-    const r = maskCanvas.getBoundingClientRect();
-    return [e.clientX - r.left, e.clientY - r.top];
-  }
-
-  function maskStroke(x1, y1, x2, y2) {
-    const size = parseInt(document.getElementById('maskBrushSize').value);
-    maskCtx.lineWidth   = size;
-    maskCtx.lineCap     = 'round';
-    maskCtx.lineJoin    = 'round';
-    maskCtx.globalCompositeOperation = maskErasing ? 'destination-out' : 'source-over';
-    maskCtx.strokeStyle = maskErasing ? 'rgba(0,0,0,1)' : 'rgba(220,50,50,0.55)';
-    maskCtx.beginPath();
-    maskCtx.moveTo(x1, y1);
-    maskCtx.lineTo(x2, y2);
-    maskCtx.stroke();
-  }
-
-  maskCanvas.addEventListener('pointerdown', e => {
-    maskDrawing = true;
-    maskCanvas.setPointerCapture(e.pointerId);
-    const [x, y] = maskPointerPos(e);
-    maskLX = x; maskLY = y;
-    maskStroke(x, y, x, y);   // dot on tap
-  });
-  maskCanvas.addEventListener('pointermove', e => {
-    if (!maskDrawing) return;
-    const [x, y] = maskPointerPos(e);
-    maskStroke(maskLX, maskLY, x, y);
-    maskLX = x; maskLY = y;
-  });
-  maskCanvas.addEventListener('pointerup',     () => { maskDrawing = false; });
-  maskCanvas.addEventListener('pointercancel', () => { maskDrawing = false; });
-
-  function openMaskEditor() {
-    const data = pyodide.FS.readFile(outputPath);
-    const url  = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
-    editor.classList.add('open');
-    maskBg.onload = () => {
-      URL.revokeObjectURL(url);
-      requestAnimationFrame(() => {
-        const ir = maskBg.getBoundingClientRect();
-        const wr = maskBg.parentElement.getBoundingClientRect();
-        maskCanvas.width  = Math.round(ir.width);
-        maskCanvas.height = Math.round(ir.height);
-        maskCanvas.style.width  = ir.width  + 'px';
-        maskCanvas.style.height = ir.height + 'px';
-        maskCanvas.style.left   = (ir.left - wr.left) + 'px';
-        maskCanvas.style.top    = (ir.top  - wr.top)  + 'px';
+      maskCanvas.addEventListener('pointermove', e => {
+        if (!maskDrawing) return;
+        const [x, y] = maskPointerPos(e);
+        maskStroke(maskLX, maskLY, x, y);
+        maskLX = x; maskLY = y;
       });
-    };
-    maskBg.src = url;
-    // reset to draw mode
-    maskErasing = false;
-    document.getElementById('maskBtnDraw').classList.add('active');
-    document.getElementById('maskBtnErase').classList.remove('active');
-  }
+      maskCanvas.addEventListener('pointerup', () => { maskDrawing = false; });
+      maskCanvas.addEventListener('pointercancel', () => { maskDrawing = false; });
 
-  btnMask.addEventListener('click', () => {
-    if (busy) return;
-    openMaskEditor();
-  });
+      function openMaskEditor() {
+        const data = pyodide.FS.readFile(outputPath);
+        const url = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
+        editor.classList.add('open');
+        maskBg.onload = () => {
+          URL.revokeObjectURL(url);
+          requestAnimationFrame(() => {
+            const ir = maskBg.getBoundingClientRect();
+            const wr = maskBg.parentElement.getBoundingClientRect();
+            maskCanvas.width = Math.round(ir.width);
+            maskCanvas.height = Math.round(ir.height);
+            maskCanvas.style.width = ir.width + 'px';
+            maskCanvas.style.height = ir.height + 'px';
+            maskCanvas.style.left = (ir.left - wr.left) + 'px';
+            maskCanvas.style.top = (ir.top - wr.top) + 'px';
+          });
+        };
+        maskBg.src = url;
+        // reset to draw mode
+        maskErasing = false;
+        document.getElementById('maskBtnDraw').classList.add('active');
+        document.getElementById('maskBtnErase').classList.remove('active');
+      }
 
-  document.getElementById('maskBtnDraw').addEventListener('click', () => {
-    maskErasing = false;
-    document.getElementById('maskBtnDraw').classList.add('active');
-    document.getElementById('maskBtnErase').classList.remove('active');
-  });
-  document.getElementById('maskBtnErase').addEventListener('click', () => {
-    maskErasing = true;
-    document.getElementById('maskBtnErase').classList.add('active');
-    document.getElementById('maskBtnDraw').classList.remove('active');
-  });
-  document.getElementById('maskBtnClear').addEventListener('click', () => {
-    maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-  });
-  document.getElementById('maskBtnCancel').addEventListener('click', () => {
-    editor.classList.remove('open');
-  });
+      btnMask.addEventListener('click', () => {
+        if (busy) return;
+        openMaskEditor();
+      });
 
-  document.getElementById('maskBtnApply').addEventListener('click', async () => {
-    if (busy) return;
+      document.getElementById('maskBtnDraw').addEventListener('click', () => {
+        maskErasing = false;
+        document.getElementById('maskBtnDraw').classList.add('active');
+        document.getElementById('maskBtnErase').classList.remove('active');
+      });
+      document.getElementById('maskBtnErase').addEventListener('click', () => {
+        maskErasing = true;
+        document.getElementById('maskBtnErase').classList.add('active');
+        document.getElementById('maskBtnDraw').classList.remove('active');
+      });
+      document.getElementById('maskBtnClear').addEventListener('click', () => {
+        maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+      });
+      document.getElementById('maskBtnCancel').addEventListener('click', () => {
+        editor.classList.remove('open');
+      });
 
-    const imgData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
-    // extract alpha channel only
-    const alpha = new Uint8Array(maskCanvas.width * maskCanvas.height);
-    for (let i = 0; i < alpha.length; i++) alpha[i] = imgData.data[i * 4 + 3];
+      document.getElementById('maskBtnApply').addEventListener('click', async () => {
+        if (busy) return;
 
-    editor.classList.remove('open');
+        const imgData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+        // extract alpha channel only
+        const alpha = new Uint8Array(maskCanvas.width * maskCanvas.height);
+        for (let i = 0; i < alpha.length; i++) alpha[i] = imgData.data[i * 4 + 3];
 
-    if (!alpha.some(v => v > 128)) {
-      setStatus('Mask was empty — nothing removed.');
-      return;
+        editor.classList.remove('open');
+
+        if (!alpha.some(v => v > 128)) {
+          setStatus('Mask was empty — nothing removed.');
+          return;
+        }
+
+        setBusy(true);
+        setStatus('Applying mask…');
+        await sleep(30);
+        try {
+          pyodide.globals.set('_mask_bytes', alpha);
+          pyodide.globals.set('_mask_w', maskCanvas.width);
+          pyodide.globals.set('_mask_h', maskCanvas.height);
+          const r = JSON.parse(pyodide.runPython(
+            `import json; json.dumps(pipeline.apply_mask('${imagePath}', '${outputPath}',` +
+            ` bytes(_mask_bytes), int(_mask_w), int(_mask_h)))`
+          ));
+          starsOk = r.count >= 1;
+          solvedOk = false;
+          showImage(pyodide.FS.readFile(outputPath));
+          setStatus(r.message);
+        } catch (e) {
+          setStatus('Mask error: ' + e.message);
+          console.error(e);
+        }
+        busy = false;
+        setButtons({ load: true, detect: true, mask: starsOk, solve: starsOk, settings: true, achievements: true });
+      });
     }
 
-    setBusy(true);
-    setStatus('Applying mask…');
-    await sleep(30);
-    try {
-      pyodide.globals.set('_mask_bytes', alpha);
-      pyodide.globals.set('_mask_w', maskCanvas.width);
-      pyodide.globals.set('_mask_h', maskCanvas.height);
-      const r = JSON.parse(pyodide.runPython(
-        `import json; json.dumps(pipeline.apply_mask('${imagePath}', '${outputPath}',` +
-        ` bytes(_mask_bytes), int(_mask_w), int(_mask_h)))`
-      ));
-      starsOk  = r.count >= 1;
-      solvedOk = false;
-      showImage(pyodide.FS.readFile(outputPath));
-      setStatus(r.message);
-    } catch (e) {
-      setStatus('Mask error: ' + e.message);
-      console.error(e);
+    // ── save ──────────────────────────────────────────────────────────────────────
+    btnSave.addEventListener('click', () => {
+      try {
+        const data = pyodide.FS.readFile(outputPath);
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
+        a.download = `starsolver_${Date.now()}.jpg`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        setStatus('Image saved.');
+      } catch (e) {
+        setStatus('Save error: ' + e.message);
+      }
+    });
+
+    // ── panorama settings ─────────────────────────────────────────────────────────
+
+    const PANO_KEY = 'starsolver_pano';
+    const PANO_DEFAULTS = { showGrid: true, constellations: 'off', resolution: 4096, blend: 'overwrite' };
+
+    function loadPanoSettings() {
+      try { return { ...PANO_DEFAULTS, ...JSON.parse(localStorage.getItem(PANO_KEY) || '{}') }; }
+      catch { return { ...PANO_DEFAULTS }; }
     }
-    busy = false;
-    setButtons({ load:true, detect:true, mask:starsOk, solve:starsOk, settings:true, achievements:true });
-  });
-}
+    function savePanoSettings(s) { localStorage.setItem(PANO_KEY, JSON.stringify(s)); }
 
-// ── save ──────────────────────────────────────────────────────────────────────
-btnSave.addEventListener('click', () => {
-  try {
-    const data = pyodide.FS.readFile(outputPath);
-    const a    = document.createElement('a');
-    a.href     = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
-    a.download = `starsolver_${Date.now()}.jpg`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    setStatus('Image saved.');
-  } catch (e) {
-    setStatus('Save error: ' + e.message);
-  }
-});
+    // ── panorama ──────────────────────────────────────────────────────────────────
 
-// ── panorama settings ─────────────────────────────────────────────────────────
+    const btnViewPano = document.getElementById('btnViewPano');
+    const btnExportPano = document.getElementById('btnExportPano');
+    const PANO_PATH = '/tmp/panorama.jpg';
 
-const PANO_KEY      = 'starsolver_pano';
-const PANO_DEFAULTS = { showGrid: true, constellations: 'off', resolution: 4096, blend: 'overwrite' };
+    function savePanoWithSettings() {
+      const ps = loadPanoSettings();
+      pyodide.globals.set('_pg', ps.showGrid);
+      pyodide.globals.set('_pm', ps.constellations);
+      if (ps.constellations === 'observed') {
+        pyodide.globals.set('_po', pyodide.toPy(loadAch().constellations));
+      } else {
+        pyodide.globals.set('_po', null);
+      }
+      pyodide.runPython(
+        `pano.save('${PANO_PATH}', show_grid=bool(_pg), cons_mode=str(_pm),` +
+        ` observed_names=list(_po) if _po is not None else None)`
+      );
+    }
 
-function loadPanoSettings() {
-  try { return { ...PANO_DEFAULTS, ...JSON.parse(localStorage.getItem(PANO_KEY) || '{}') }; }
-  catch { return { ...PANO_DEFAULTS }; }
-}
-function savePanoSettings(s) { localStorage.setItem(PANO_KEY, JSON.stringify(s)); }
+    let panoRenderer = null;
+    let panoCamera = null;
+    let panoScene = null;
+    let panoThree = null;   // cached Three.js module
+    let panoGridObj = null;   // THREE.LineSegments for coord grid
+    let panoConsObj = null;   // THREE.LineSegments for constellation lines
+    let panoConsData = null;   // constellation segment data fetched from Python
+    let panoAz = 0;
+    let panoEl = 0;
+    let panoFov = 75;
 
-// ── panorama ──────────────────────────────────────────────────────────────────
+    function renderPano() {
+      const el = panoEl * Math.PI / 180;
+      const az = panoAz * Math.PI / 180;
+      panoCamera.lookAt(
+        Math.cos(el) * Math.cos(az),
+        Math.sin(el),
+        Math.cos(el) * Math.sin(az)
+      );
+      panoRenderer.render(panoScene, panoCamera);
+    }
 
-const btnViewPano   = document.getElementById('btnViewPano');
-const btnExportPano = document.getElementById('btnExportPano');
-const PANO_PATH     = '/tmp/panorama.jpg';
-
-function savePanoWithSettings() {
-  const ps = loadPanoSettings();
-  pyodide.globals.set('_pg', ps.showGrid);
-  pyodide.globals.set('_pm', ps.constellations);
-  if (ps.constellations === 'observed') {
-    pyodide.globals.set('_po', pyodide.toPy(loadAch().constellations));
-  } else {
-    pyodide.globals.set('_po', null);
-  }
-  pyodide.runPython(
-    `pano.save('${PANO_PATH}', show_grid=bool(_pg), cons_mode=str(_pm),` +
-    ` observed_names=list(_po) if _po is not None else None)`
-  );
-}
-
-let panoRenderer = null;
-let panoCamera   = null;
-let panoScene    = null;
-let panoThree    = null;   // cached Three.js module
-let panoGridObj  = null;   // THREE.LineSegments for coord grid
-let panoConsObj  = null;   // THREE.LineSegments for constellation lines
-let panoConsData = null;   // constellation segment data fetched from Python
-let panoAz       = 0;
-let panoEl       = 0;
-let panoFov      = 75;
-
-function renderPano() {
-  const el = panoEl * Math.PI / 180;
-  const az = panoAz * Math.PI / 180;
-  panoCamera.lookAt(
-    Math.cos(el) * Math.cos(az),
-    Math.sin(el),
-    Math.cos(el) * Math.sin(az)
-  );
-  panoRenderer.render(panoScene, panoCamera);
-}
-
-function resizePanoRenderer() {
-  const w = window.innerWidth, h = window.innerHeight;
-  panoRenderer.setSize(w, h);
-  panoCamera.aspect = w / h;
-  panoCamera.updateProjectionMatrix();
-  renderPano();
-}
-
-function initPanoDrag(canvas) {
-  let dragging = false, lx = 0, ly = 0;
-
-  canvas.addEventListener('mousedown', e => { dragging = true; lx = e.clientX; ly = e.clientY; });
-  window.addEventListener('mouseup',   () => { dragging = false; });
-  window.addEventListener('mousemove', e => {
-    if (!dragging) return;
-    panoAz -= (e.clientX - lx) * 0.3;
-    panoEl  = Math.max(-85, Math.min(85, panoEl - (e.clientY - ly) * 0.3));
-    lx = e.clientX; ly = e.clientY;
-    renderPano();
-  });
-
-  let lt = null;
-  canvas.addEventListener('touchstart', e => {
-    e.preventDefault();
-    lt = Array.from(e.touches).map(t => ({ x: t.clientX, y: t.clientY }));
-  }, { passive: false });
-  canvas.addEventListener('touchmove', e => {
-    e.preventDefault();
-    const ct = Array.from(e.touches).map(t => ({ x: t.clientX, y: t.clientY }));
-    if (ct.length === 1 && lt && lt.length === 1) {
-      panoAz -= (ct[0].x - lt[0].x) * 0.3;
-      panoEl  = Math.max(-85, Math.min(85, panoEl - (ct[0].y - lt[0].y) * 0.3));
-    } else if (ct.length === 2 && lt && lt.length === 2) {
-      const d0 = Math.hypot(lt[0].x - lt[1].x, lt[0].y - lt[1].y);
-      const d1 = Math.hypot(ct[0].x - ct[1].x, ct[0].y - ct[1].y);
-      panoFov = Math.max(20, Math.min(120, panoFov * d0 / d1));
-      panoCamera.fov = panoFov;
+    function resizePanoRenderer() {
+      const w = window.innerWidth, h = window.innerHeight;
+      panoRenderer.setSize(w, h);
+      panoCamera.aspect = w / h;
       panoCamera.updateProjectionMatrix();
+      renderPano();
     }
-    lt = ct;
-    renderPano();
-  }, { passive: false });
-}
 
-function makeCoordGrid(THREE, radius) {
-  const pts = [];
-  const N   = 64;   // segments per latitude circle
-  const M   = 32;   // segments per meridian
+    function initPanoDrag(canvas) {
+      let dragging = false, lx = 0, ly = 0;
 
-  // Dec parallels every 30° (skip poles)
-  for (const dec of [-60, -30, 0, 30, 60]) {
-    const d = dec * Math.PI / 180;
-    for (let i = 0; i < N; i++) {
-      const a0 = (i     / N) * 2 * Math.PI;
-      const a1 = ((i+1) / N) * 2 * Math.PI;
-      pts.push(
-        -Math.cos(d)*Math.cos(a0), Math.sin(d), Math.cos(d)*Math.sin(a0),
-        -Math.cos(d)*Math.cos(a1), Math.sin(d), Math.cos(d)*Math.sin(a1),
-      );
+      canvas.addEventListener('mousedown', e => { dragging = true; lx = e.clientX; ly = e.clientY; });
+      window.addEventListener('mouseup', () => { dragging = false; });
+      window.addEventListener('mousemove', e => {
+        if (!dragging) return;
+        panoAz -= (e.clientX - lx) * 0.3;
+        panoEl = Math.max(-85, Math.min(85, panoEl - (e.clientY - ly) * 0.3));
+        lx = e.clientX; ly = e.clientY;
+        renderPano();
+      });
+
+      let lt = null;
+      canvas.addEventListener('touchstart', e => {
+        e.preventDefault();
+        lt = Array.from(e.touches).map(t => ({ x: t.clientX, y: t.clientY }));
+      }, { passive: false });
+      canvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        const ct = Array.from(e.touches).map(t => ({ x: t.clientX, y: t.clientY }));
+        if (ct.length === 1 && lt && lt.length === 1) {
+          panoAz -= (ct[0].x - lt[0].x) * 0.3;
+          panoEl = Math.max(-85, Math.min(85, panoEl - (ct[0].y - lt[0].y) * 0.3));
+        } else if (ct.length === 2 && lt && lt.length === 2) {
+          const d0 = Math.hypot(lt[0].x - lt[1].x, lt[0].y - lt[1].y);
+          const d1 = Math.hypot(ct[0].x - ct[1].x, ct[0].y - ct[1].y);
+          panoFov = Math.max(20, Math.min(120, panoFov * d0 / d1));
+          panoCamera.fov = panoFov;
+          panoCamera.updateProjectionMatrix();
+        }
+        lt = ct;
+        renderPano();
+      }, { passive: false });
     }
-  }
 
-  // RA meridians every 30°
-  for (let ra = 0; ra < 360; ra += 30) {
-    const r = ra * Math.PI / 180;
-    for (let j = 0; j < M; j++) {
-      const d0 = -Math.PI/2 + (j     / M) * Math.PI;
-      const d1 = -Math.PI/2 + ((j+1) / M) * Math.PI;
-      pts.push(
-        -Math.cos(d0)*Math.cos(r), Math.sin(d0), Math.cos(d0)*Math.sin(r),
-        -Math.cos(d1)*Math.cos(r), Math.sin(d1), Math.cos(d1)*Math.sin(r),
-      );
+    function makeCoordGrid(THREE, radius) {
+      const pts = [];
+      const N = 64;   // segments per latitude circle
+      const M = 32;   // segments per meridian
+
+      // Dec parallels every 30° (skip poles)
+      for (const dec of [-60, -30, 0, 30, 60]) {
+        const d = dec * Math.PI / 180;
+        for (let i = 0; i < N; i++) {
+          const a0 = (i / N) * 2 * Math.PI;
+          const a1 = ((i + 1) / N) * 2 * Math.PI;
+          pts.push(
+            -Math.cos(d) * Math.cos(a0), Math.sin(d), Math.cos(d) * Math.sin(a0),
+            -Math.cos(d) * Math.cos(a1), Math.sin(d), Math.cos(d) * Math.sin(a1),
+          );
+        }
+      }
+
+      // RA meridians every 30°
+      for (let ra = 0; ra < 360; ra += 30) {
+        const r = ra * Math.PI / 180;
+        for (let j = 0; j < M; j++) {
+          const d0 = -Math.PI / 2 + (j / M) * Math.PI;
+          const d1 = -Math.PI / 2 + ((j + 1) / M) * Math.PI;
+          pts.push(
+            -Math.cos(d0) * Math.cos(r), Math.sin(d0), Math.cos(d0) * Math.sin(r),
+            -Math.cos(d1) * Math.cos(r), Math.sin(d1), Math.cos(d1) * Math.sin(r),
+          );
+        }
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+      return new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0x223344 }));
     }
-  }
 
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-  return new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0x223344 }));
-}
-
-function makeConsLines(THREE, radius, consData, filterNames) {
-  // filterNames: null = all constellations, Set = only those names
-  const pts = [];
-  for (const [name, segs] of Object.entries(consData)) {
-    if (filterNames && !filterNames.has(name)) continue;
-    for (const [ra1, dec1, ra2, dec2] of segs) {
-      const r1 = ra1 * Math.PI / 180, d1 = dec1 * Math.PI / 180;
-      const r2 = ra2 * Math.PI / 180, d2 = dec2 * Math.PI / 180;
-      pts.push(
-        -Math.cos(d1) * Math.cos(r1) * radius, Math.sin(d1) * radius, Math.cos(d1) * Math.sin(r1) * radius,
-        -Math.cos(d2) * Math.cos(r2) * radius, Math.sin(d2) * radius, Math.cos(d2) * Math.sin(r2) * radius,
-      );
+    function makeConsLines(THREE, radius, consData, filterNames) {
+      // filterNames: null = all constellations, Set = only those names
+      const pts = [];
+      for (const [name, segs] of Object.entries(consData)) {
+        if (filterNames && !filterNames.has(name)) continue;
+        for (const [ra1, dec1, ra2, dec2] of segs) {
+          const r1 = ra1 * Math.PI / 180, d1 = dec1 * Math.PI / 180;
+          const r2 = ra2 * Math.PI / 180, d2 = dec2 * Math.PI / 180;
+          pts.push(
+            -Math.cos(d1) * Math.cos(r1) * radius, Math.sin(d1) * radius, Math.cos(d1) * Math.sin(r1) * radius,
+            -Math.cos(d2) * Math.cos(r2) * radius, Math.sin(d2) * radius, Math.cos(d2) * Math.sin(r2) * radius,
+          );
+        }
+      }
+      if (!pts.length) return null;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+      return new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0xaa7700 }));
     }
-  }
-  if (!pts.length) return null;
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-  return new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0xaa7700 }));
-}
 
-async function openPanoViewer(data) {
-  document.getElementById('pano-viewer').style.display = 'block';
+    async function openPanoViewer(data) {
+      document.getElementById('pano-viewer').style.display = 'block';
 
-  if (!panoThree) {
-    panoThree = await import('https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js');
-  }
-  const THREE = panoThree;
+      if (!panoThree) {
+        panoThree = await import('https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js');
+      }
+      const THREE = panoThree;
 
-  if (!panoRenderer) {
-    const canvas = document.getElementById('pano-canvas');
-    panoRenderer = new THREE.WebGLRenderer({ canvas, antialias: false });
-    panoRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    panoScene  = new THREE.Scene();
-    panoCamera = new THREE.PerspectiveCamera(panoFov, 1, 0.1, 200);
-    panoCamera.position.set(0, 0, 0);
-    panoScene.add(new THREE.Mesh(          // index 0: image sphere
-      new THREE.SphereGeometry(100, 64, 32),
-      new THREE.MeshBasicMaterial({ side: THREE.BackSide })
-    ));
-    initPanoDrag(canvas);
-    window.addEventListener('resize', resizePanoRenderer);
-  }
+      if (!panoRenderer) {
+        const canvas = document.getElementById('pano-canvas');
+        panoRenderer = new THREE.WebGLRenderer({ canvas, antialias: false });
+        panoRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        panoScene = new THREE.Scene();
+        panoCamera = new THREE.PerspectiveCamera(panoFov, 1, 0.1, 200);
+        panoCamera.position.set(0, 0, 0);
+        panoScene.add(new THREE.Mesh(          // index 0: image sphere
+          new THREE.SphereGeometry(100, 64, 32),
+          new THREE.MeshBasicMaterial({ side: THREE.BackSide })
+        ));
+        initPanoDrag(canvas);
+        window.addEventListener('resize', resizePanoRenderer);
+      }
 
-  // Apply current panorama settings (runs on every open)
-  const ps = loadPanoSettings();
+      // Apply current panorama settings (runs on every open)
+      const ps = loadPanoSettings();
 
-  if (panoGridObj) { panoScene.remove(panoGridObj); panoGridObj = null; }
-  if (ps.showGrid) {
-    panoGridObj = makeCoordGrid(THREE, 99);
-    panoScene.add(panoGridObj);
-  }
+      if (panoGridObj) { panoScene.remove(panoGridObj); panoGridObj = null; }
+      if (ps.showGrid) {
+        panoGridObj = makeCoordGrid(THREE, 99);
+        panoScene.add(panoGridObj);
+      }
 
-  if (panoConsObj) { panoScene.remove(panoConsObj); panoConsObj = null; }
-  if (ps.constellations !== 'off') {
-    if (!panoConsData) {
-      panoConsData = JSON.parse(pyodide.runPython(`
+      if (panoConsObj) { panoScene.remove(panoConsObj); panoConsObj = null; }
+      if (ps.constellations !== 'off') {
+        if (!panoConsData) {
+          panoConsData = JSON.parse(pyodide.runPython(`
 import json
 from catalog import _LINES_RAW, _get_hip_coords, CONSTELLATIONS
 _hc = _get_hip_coords()
@@ -1827,143 +2043,144 @@ for _row in _LINES_RAW:
         _r[_name] = _segs
 json.dumps(_r)
 `));
+        }
+        const filter = ps.constellations === 'observed'
+          ? new Set(loadAch().constellations)
+          : null;
+        panoConsObj = makeConsLines(THREE, 98, panoConsData, filter);
+        if (panoConsObj) panoScene.add(panoConsObj);
+      }
+
+      resizePanoRenderer();
+
+      const url = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
+      new THREE.TextureLoader().load(url, tex => {
+        panoScene.children[0].material.map = tex;
+        panoScene.children[0].material.needsUpdate = true;
+        URL.revokeObjectURL(url);
+        renderPano();
+      });
     }
-    const filter = ps.constellations === 'observed'
-      ? new Set(loadAch().constellations)
-      : null;
-    panoConsObj = makeConsLines(THREE, 98, panoConsData, filter);
-    if (panoConsObj) panoScene.add(panoConsObj);
-  }
 
-  resizePanoRenderer();
+    document.getElementById('btnClosePano').addEventListener('click', () => {
+      document.getElementById('pano-viewer').style.display = 'none';
+    });
 
-  const url = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
-  new THREE.TextureLoader().load(url, tex => {
-    panoScene.children[0].material.map = tex;
-    panoScene.children[0].material.needsUpdate = true;
-    URL.revokeObjectURL(url);
-    renderPano();
-  });
-}
-
-document.getElementById('btnClosePano').addEventListener('click', () => {
-  document.getElementById('pano-viewer').style.display = 'none';
-});
-
-// Per-image "Add to pano" — delegated from achImageList
-async function doAddToPano(key, rec) {
-  setBusy(true);
-  setStatus(`Adding ${key} to panorama…`);
-  await sleep(30);
-  try {
-    pyodide.FS.writeFile('/tmp/pano_in.jpg', rec.bytes);
-    pyodide.globals.set('_plate_dict', pyodide.toPy(rec.plate));
-    pyodide.runPython(`
+    // Per-image "Add to pano" — delegated from achImageList
+    async function doAddToPano(key, rec) {
+      setBusy(true);
+      setStatus(`Adding ${key} to panorama…`);
+      await sleep(30);
+      try {
+        pyodide.FS.writeFile('/tmp/pano_in.jpg', rec.bytes);
+        pyodide.globals.set('_plate_dict', pyodide.toPy(rec.plate));
+        pyodide.runPython(`
 from plate import Plate
 _plate = Plate.from_dict(dict(_plate_dict))
 pano.add_image('/tmp/pano_in.jpg', _plate)
 `);
-    btnViewPano.disabled   = false;
-    btnExportPano.disabled = false;
-    const n = pano.count;
-    setStatus(`Added ${key} to panorama — ${n} image${n !== 1 ? 's' : ''}`);
-  } catch (err) {
-    setStatus('Panorama error: ' + err.message);
-    console.error(err);
-  }
-  busy = false;
-  setButtons({
-    load: true,
-    detect: !!currentImageFile, mask: starsOk,
-    solve: solvedOk, refine: solvedOk, save: solvedOk,
-    settings: true, achievements: true,
-  });
-}
+        btnViewPano.disabled = false;
+        btnExportPano.disabled = false;
+        const n = pano.count;
+        setStatus(`Added ${key} to panorama — ${n} image${n !== 1 ? 's' : ''}`);
+      } catch (err) {
+        setStatus('Panorama error: ' + err.message);
+        console.error(err);
+      }
+      busy = false;
+      setButtons({
+        load: true,
+        detect: !!currentImageFile, mask: starsOk,
+        solve: solvedOk, refine: solvedOk, save: solvedOk,
+        settings: true, achievements: true,
+      });
+    }
 
-document.getElementById('achImageList').addEventListener('click', async e => {
-  const btn = e.target.closest('.ach-img-btn');
-  if (!btn || busy) return;
-  const key = btn.dataset.key;
-  const rec = imageStore.get(key);
-  if (!rec) return;
+    document.getElementById('achImageList').addEventListener('click', async e => {
+      const btn = e.target.closest('.ach-img-btn');
+      if (!btn || busy) return;
+      const key = btn.dataset.key;
+      const rec = imageStore.get(key);
+      if (!rec) return;
 
-  if (rec.bytes !== null) {
-    await doAddToPano(key, rec);
-    return;
-  }
+      if (rec.bytes !== null) {
+        await doAddToPano(key, rec);
+        return;
+      }
 
-  // bytes lost on reload — ask user to re-select the file
-  setStatus(`Re-select "${key}" to load it…`);
-  const input = document.getElementById('inputPanoReload');
-  input.value = '';  // reset so 'change' always fires
-  input.onchange = async () => {
-    const file = input.files[0];
-    if (!file) { setStatus('Cancelled.'); return; }
-    const buf = await file.arrayBuffer();
-    rec.bytes = new Uint8Array(buf);
-    await doAddToPano(key, rec);
-  };
-  input.click();
-});
+      // bytes lost on reload — ask user to re-select the file
+      setStatus(`Re-select "${key}" to load it…`);
+      const input = document.getElementById('inputPanoReload');
+      input.value = '';  // reset so 'change' always fires
+      input.onchange = async () => {
+        const file = input.files[0];
+        if (!file) { setStatus('Cancelled.'); return; }
+        const buf = await file.arrayBuffer();
+        rec.bytes = new Uint8Array(buf);
+        await doAddToPano(key, rec);
+      };
+      input.click();
+    });
 
-btnViewPano.addEventListener('click', async () => {
-  if (busy || !pano) return;
-  setBusy(true);
-  setStatus('Building panorama image…');
-  await sleep(30);
-  try {
-    // Save plain canvas — Three.js draws the grid/constellation overlay
-    // itself, so we must not bake them into the texture here or they double.
-    pyodide.runPython(`pano.save('${PANO_PATH}')`);
-    const data = pyodide.FS.readFile(PANO_PATH);
-    setStatus('');
-    await openPanoViewer(data);
-  } catch (e) {
-    setStatus('Panorama error: ' + e.message);
-    console.error(e);
-  }
-  busy = false;
-  setButtons({
-    load: true,
-    detect: !!currentImageFile, mask: starsOk,
-    solve: solvedOk, refine: solvedOk, save: solvedOk,
-    settings: true, achievements: true,
-  });
-  btnViewPano.disabled   = false;
-  btnExportPano.disabled = false;
-});
+    btnViewPano.addEventListener('click', async () => {
+      if (busy || !pano) return;
+      setBusy(true);
+      setStatus('Building panorama image…');
+      await sleep(30);
+      try {
+        // Save plain canvas — Three.js draws the grid/constellation overlay
+        // itself, so we must not bake them into the texture here or they double.
+        pyodide.runPython(`pano.save('${PANO_PATH}')`);
+        const data = pyodide.FS.readFile(PANO_PATH);
+        setStatus('');
+        await openPanoViewer(data);
+      } catch (e) {
+        setStatus('Panorama error: ' + e.message);
+        console.error(e);
+      }
+      busy = false;
+      setButtons({
+        load: true,
+        detect: !!currentImageFile, mask: starsOk,
+        solve: solvedOk, refine: solvedOk, save: solvedOk,
+        settings: true, achievements: true,
+      });
+      btnViewPano.disabled = false;
+      btnExportPano.disabled = false;
+    });
 
-btnExportPano.addEventListener('click', async () => {
-  if (busy || !pano) return;
-  setBusy(true);
-  setStatus('Exporting panorama…');
-  await sleep(30);
-  try {
-    savePanoWithSettings();
-    const data = pyodide.FS.readFile(PANO_PATH);
-    const url  = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
-    const a    = document.createElement('a');
-    a.href = url; a.download = 'panorama.jpg'; a.click();
-    URL.revokeObjectURL(url);
-    setStatus('Panorama exported.');
-  } catch (e) {
-    setStatus('Export error: ' + e.message);
-    console.error(e);
-  }
-  busy = false;
-  setButtons({
-    load: true,
-    detect: !!currentImageFile, mask: starsOk,
-    solve: solvedOk, refine: solvedOk, save: solvedOk,
-    settings: true, achievements: true,
-  });
-  btnViewPano.disabled   = false;
-  btnExportPano.disabled = false;
-});
+    btnExportPano.addEventListener('click', async () => {
+      if (busy || !pano) return;
+      setBusy(true);
+      setStatus('Exporting panorama…');
+      await sleep(30);
+      try {
+        savePanoWithSettings();
+        const data = pyodide.FS.readFile(PANO_PATH);
+        const url = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
+        const a = document.createElement('a');
+        a.href = url; a.download = 'panorama.jpg'; a.click();
+        URL.revokeObjectURL(url);
+        setStatus('Panorama exported.');
+      } catch (e) {
+        setStatus('Export error: ' + e.message);
+        console.error(e);
+      }
+      busy = false;
+      setButtons({
+        load: true,
+        detect: !!currentImageFile, mask: starsOk,
+        solve: solvedOk, refine: solvedOk, save: solvedOk,
+        settings: true, achievements: true,
+      });
+      btnViewPano.disabled = false;
+      btnExportPano.disabled = false;
+    });
 
-// ── boot ──────────────────────────────────────────────────────────────────────
-initPyodide();
-</script>
+    // ── boot ──────────────────────────────────────────────────────────────────────
+    initPyodide();
+  </script>
 
 </body>
+
 </html>
