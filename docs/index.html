@@ -896,7 +896,7 @@
         const nearest = obj.nearest_name
           ? `${obj.nearest_name} · ${nearId}`
           : nearId;
-        title = `<b style="color:#e06060">Unidentified</b><br><span style="color:#888">Nearest: ${nearest}</span>`;
+        title = `<b style="color:#e06060">Unidentified</b><br><span style="color:#888">Best match: ${nearest}</span>`;
         catRaDec = _rdFmt(obj.nearest_ra, obj.nearest_dec);
         catMag = `${obj.nearest_mag.toFixed(2)}m`;
         obsRaDec = _rdFmt(obj.obs_ra, obj.obs_dec);

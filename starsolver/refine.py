@@ -29,7 +29,10 @@ BLEND_R    = 5.0   # pixel radius within which catalog stars contribute to a ble
 
 
 def _effective_mags(within, px_vis, py_vis, mag_vis):
-    """For each candidate, return effective magnitude including spatially blended companions."""
+    """For each candidate, return effective magnitude blending only same-or-fainter companions.
+
+    Brighter companions are excluded: if a brighter star is within BLEND_R, the current
+    star is not the detection source and its flux should not be inflated by the brighter one."""
     n = len(within)
     if n <= 1:
         return mag_vis[within].copy()
@@ -40,11 +43,10 @@ def _effective_mags(within, px_vis, py_vis, mag_vis):
     for i in range(n):
         dx = px_w - px_w[i]
         dy = py_w - py_w[i]
-        companions = np.where(dx * dx + dy * dy <= blend_r2)[0]
-        if len(companions) == 1:
-            eff[i] = mag_vis[within[i]]
-        else:
-            eff[i] = -2.5 * np.log10(np.sum(10.0 ** (-0.4 * mag_vis[within[companions]])))
+        near = np.where(dx * dx + dy * dy <= blend_r2)[0]
+        # Only blend companions that are not brighter than star i (mag >= mag_i means fainter)
+        blend = near[mag_vis[within[near]] >= mag_vis[within[i]]]
+        eff[i] = -2.5 * np.log10(np.sum(10.0 ** (-0.4 * mag_vis[within[blend]])))
     return eff
 
 def _project_visible(plate: Plate, v_cel: np.ndarray, near_idx: np.ndarray,
@@ -75,15 +77,6 @@ def _find_candidates(di, px_vis, py_vis, mag_vis, det_x, det_y, det_logb,
     d2_w = dist2[within]
     if phot_sig < 1e8:
         eff_mag = _effective_mags(within, px_vis, py_vis, mag_vis)
-        # Exclude candidates whose effective magnitude is dominated by a
-        # brighter companion: a 10m star within 5px of Capella gets eff_mag≈0,
-        # passes the photometric check, and can beat Capella on distance alone.
-        dominated = (mag_vis[within] - eff_mag) > 2.0
-        within   = within[~dominated]
-        d2_w     = d2_w[~dominated]
-        eff_mag  = eff_mag[~dominated]
-        if len(within) == 0:
-            return None
         pred_mag = (det_logb[di] - phot_b) / PHOT_SLOPE
         resids = pred_mag - eff_mag
         lims = np.where(resids > 0, 5.0 * phot_sig, 3.0 * phot_sig)
@@ -164,7 +157,7 @@ def _gauss_newton_step(plate: Plate, v_cel_m: np.ndarray,
 
 def _build_result(plate: Plate, v_cel: np.ndarray,
                   ra_rad, dec_rad, mag, hip_ids_arr,
-                  mdi, mci, det_x, det_y, det_logb, stars, phot_b) -> Dict:
+                  mdi, mci, det_x, det_y, det_logb, stars, phot_b, phot_sig) -> Dict:
     """Compute final residuals and assemble the return dict."""
     w, h = plate.w, plate.h
 
@@ -235,7 +228,8 @@ def _build_result(plate: Plate, v_cel: np.ndarray,
         'matched_stars':      matched_stars,
         'matched_centroids':  matched_yx,
         'unknown_detections': unknown_dets,
-        'phot_b':             round(phot_b, 4),
+        'phot_b':             round(phot_b,    4),
+        'phot_sig':           round(phot_sig,  4),
         'constellations':     constellations,
         'dec_min':            dec_min,
         'dec_max':            dec_max,
@@ -324,4 +318,4 @@ def refine(plate: Plate, stars: List[Dict],
         return {'status': 'failed'}
 
     return _build_result(plate, v_cel, ra_rad, dec_rad, mag, hip_ids_arr,
-                         match_det_idx, match_star_idx, det_x, det_y, det_logb, stars, phot_b)
+                         match_det_idx, match_star_idx, det_x, det_y, det_logb, stars, phot_b, phot_sig)

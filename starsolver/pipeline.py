@@ -23,8 +23,8 @@ from draw import (load_image, draw_detections, draw_constellations, draw_star_na
                   _draw_refine_labels, _draw_special_labels, draw_timestamp)
 
 
-def _enrich_unknowns(plate, unknowns):
-    """Add nearest visible catalog star info to each unknown detection dict."""
+def _enrich_unknowns(plate, unknowns, phot_b, phot_sig, sigma_r):
+    """Add nearest (by joint spatial+photometric likelihood) catalog star to each unknown."""
     if not unknowns:
         return
     from catalog import _get_hip_catalog, _get_all_bayer_names
@@ -43,8 +43,10 @@ def _enrich_unknowns(plate, unknowns):
     vis_dec = np.degrees(dec_rad[vis])
     names   = _get_all_bayer_names()
     for u in unknowns:
-        dists = np.sqrt((vis_px - u['x']) ** 2 + (vis_py - u['y']) ** 2)
-        ni    = int(np.argmin(dists))
+        d2    = (vis_px - u['x']) ** 2 + (vis_py - u['y']) ** 2
+        dm    = u['pred_mag'] - vis_mag
+        cost  = d2 / (sigma_r ** 2) + (dm / phot_sig) ** 2
+        ni    = int(np.argmin(cost))
         hip   = int(vis_hip[ni])
         u['nearest_hip']     = hip
         u['nearest_name']    = names.get(hip, '')
@@ -339,8 +341,10 @@ class Pipeline:
             mask=draw_mask,
         )
 
-        unknowns = result['unknown_detections']
-        _enrich_unknowns(refined_plate, unknowns)
+        unknowns  = result['unknown_detections']
+        sigma_r_px = result['RMSE'] * result['w'] / (result['FOV'] * 3600.0)
+        _enrich_unknowns(refined_plate, unknowns,
+                         result['phot_b'], result['phot_sig'], max(sigma_r_px, 3.0))
 
         # ── special object matching (planets + deep-sky) ─────────────────
         arcsec_per_px = refined_plate.fov_deg * 3600.0 / refined_plate.w
