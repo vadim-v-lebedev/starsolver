@@ -53,7 +53,7 @@ def _enrich_unknowns(plate, unknowns, phot_b, phot_sig, sigma_r):
         u['nearest_ra']      = round(float(vis_ra[ni]),  4)
         u['nearest_dec']     = round(float(vis_dec[ni]), 4)
         u['nearest_mag']     = round(float(vis_mag[ni]), 2)
-        u['nearest_dist_px'] = round(float(dists[ni]),   1)
+        u['nearest_dist_px'] = round(float(np.sqrt(d2[ni])), 1)
         pm = u.get('pred_mag')
         u['mag_diff'] = round(float(pm) - float(vis_mag[ni]), 1) if pm is not None else None
 
