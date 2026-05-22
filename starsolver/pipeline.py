@@ -393,6 +393,8 @@ class Pipeline:
             u['obs_ra']  = round(obs[0], 4)
             u['obs_dec'] = round(obs[1], 4)
 
+        phot_b     = result['phot_b']
+        phot_slope = 0.7
         for sp in special_matches:
             obs = refined_plate.pixel_to_radec(sp['x'], sp['y'])
             sp['obs_ra']  = round(obs[0], 4)
@@ -401,6 +403,9 @@ class Pipeline:
             sp['pixel_error'] = round(
                 float(np.sqrt((proj[0] - sp['x'])**2 + (proj[1] - sp['y'])**2)), 1
             ) if proj is not None else None
+            brightness = sp.pop('brightness', None)
+            if brightness and brightness > 0:
+                sp['pred_mag'] = round((-2.5 * np.log10(brightness) - phot_b) / phot_slope, 2)
 
         objects_json = json.dumps({
             'stars':    result['matched_stars'],

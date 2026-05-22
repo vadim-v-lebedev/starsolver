@@ -703,7 +703,9 @@ function showPopup(obj, vpx, vpy) {
     const sub = obj.type ? `<br><span style="color:#888">${obj.type}</span>` : '';
     title    = `<b>${obj.name}</b>${sub}`;
     catRaDec = _rdFmt(obj.ra, obj.dec);
+    catMag   = obj.mag != null ? `${obj.mag.toFixed(1)}m` : '';
     obsRaDec = _rdFmt(obj.obs_ra, obj.obs_dec);
+    obsMag   = obj.pred_mag != null ? `${obj.pred_mag.toFixed(2)}m` : '';
     residual = obj.pixel_error != null ? `${obj.pixel_error} px` : '—';
   }
 
@@ -1194,7 +1196,7 @@ const CDN_T3  = 'https://cdn.jsdelivr.net/gh/vadim-v-lebedev/tetra3@master/tetra
 
 const SS_FILES = ['pipeline.py','detector.py','solver.py','refine.py',
                   'plate.py','draw.py','catalog.py','minicv.py','config.py',
-                  'panorama.py','planets.py','deepsky.py'];
+                  'panorama.py','miniephem.py','deepsky.py'];
 const T3_FILES = ['__init__.py','tetra3.py'];
 
 async function initPyodide() {
@@ -1231,6 +1233,10 @@ async function initPyodide() {
     setProgress(55);
     setStatus('Fetching star catalog…');
     pyodide.FS.writeFile('/ss/hip.npz', await fetchBinary(`${CDN_SS}/hip.npz`));
+    pyodide.FS.writeFile('/ss/planets.pkl',
+                         await fetchBinary(`${CDN_SS}/planets.pkl`));
+    pyodide.FS.writeFile('/ss/asteroids_short.pkl',
+                         await fetchBinary(`${CDN_SS}/asteroids_short.pkl`));
 
     setProgress(70);
     setStatus('Fetching pattern database…');
