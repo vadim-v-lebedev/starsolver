@@ -3,13 +3,15 @@ Drawing functions for star field overlays.
 
 All functions modify the passed-in numpy image (RGB) in-place and return it.
 """
+import os
 import numpy as np
 from PIL import Image, ImageDraw, ImageOps
 from typing import Dict, List, Optional, Tuple
 
 from plate import Plate
 from catalog import (_LINES_RAW, _get_star_names,
-                     _get_hip_coords, _get_hip_catalog, _hip_id_for_radec)
+                     _get_hip_coords, _get_hip_coords_all,
+                     _get_hip_catalog, _hip_id_for_radec)
 
 
 # ── image loading ────────────────────────────────────────────────────────────
@@ -38,6 +40,263 @@ def _get_label_font(size: int = 32):
         except (OSError, IOError):
             pass
     return ImageFont.load_default()
+
+
+# ── constellation art ────────────────────────────────────────────────────────
+
+_ART_CACHE = None
+
+
+def _load_constellation_art():
+    """Parse Stellarium's constellationsart.fab; defer PNG decoding to first use.
+
+    Returns {abbr: {'png_path', 'anchors_img', 'anchors_hip', 'image'}}.
+    'image' starts as None and is populated by _get_art_image on first access.
+    """
+    global _ART_CACHE
+    if _ART_CACHE is not None:
+        return _ART_CACHE
+    art_dir  = os.path.join(os.path.dirname(__file__), 'constellation_art')
+    fab_path = os.path.join(art_dir, 'constellationsart.fab')
+    if not os.path.exists(fab_path):
+        _ART_CACHE = {}
+        return _ART_CACHE
+    db = {}
+    with open(fab_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            parts = line.split()
+            if len(parts) < 11:
+                continue
+            anc = np.array([
+                [float(parts[2]), float(parts[3])],
+                [float(parts[5]), float(parts[6])],
+                [float(parts[8]), float(parts[9])],
+            ], dtype=np.float32)
+            hips = np.array([int(parts[4]), int(parts[7]), int(parts[10])],
+                            dtype=np.int32)
+            png_path = os.path.join(art_dir, parts[1])
+            if not os.path.exists(png_path):
+                continue
+            db[parts[0]] = {
+                'png_path':    png_path,
+                'anchors_img': anc,
+                'anchors_hip': hips,
+                'image':       None,   # decoded on first use
+            }
+    _ART_CACHE = db
+    return _ART_CACHE
+
+
+def _get_art_image(entry):
+    """Decode PNG on first access; cache the uint8 grayscale array in entry."""
+    if entry['image'] is None:
+        entry['image'] = np.asarray(
+            Image.open(entry['png_path']).convert('L'), dtype=np.uint8)
+    return entry['image']
+
+
+def draw_constellation_art(img: np.ndarray, plate,
+                           opacity: float = 0.8,
+                           color: Tuple = (200, 170, 130),
+                           mask: Optional[np.ndarray] = None) -> np.ndarray:
+    """Blend Stellarium western-sky-culture art onto img using the plate solution.
+
+    Each output pixel is back-projected to a sky unit vector (undistortion is
+    always valid for in-image pixels), then mapped to art-image coordinates via a
+    gnomonic tangent-plane transform anchored by the three Hipparcos stars in the
+    .fab file.  This avoids applying the distortion polynomial to off-FOV anchor
+    stars, which extrapolates unreliably.
+
+    To keep drawing fast the back-projection and blending are done at 1/4
+    resolution; the resulting colour delta is bilinearly upsampled before being
+    applied to the full-resolution image.  Per-constellation work is also
+    skipped via a two-stage cull (coarse centroid distance, then art bbox).
+    """
+    art_db = _load_constellation_art()
+    if not art_db:
+        return img
+
+    try:
+        # Use full catalog lookup — art anchors are not all in constellation lines.
+        hip_coords = _get_hip_coords_all()
+    except FileNotFoundError:
+        return img
+
+    saved = img.copy() if mask is not None else None
+    h, w  = img.shape[:2]
+    SCALE = 4
+    h_s, w_s = max(1, h // SCALE), max(1, w // SCALE)
+
+    # ── pre-compute celestial unit vectors at ¼ resolution ───────────────────
+    # Pixel centres of each SCALE×SCALE block in original-image coordinates.
+    f, cx, cy, k1, k2 = plate.f, plate.cx, plate.cy, plate.k1, plate.k2
+    px_g = (np.arange(w_s, dtype=np.float32) + 0.5) * SCALE - 0.5   # (w_s,)
+    py_g = (np.arange(h_s, dtype=np.float32) + 0.5) * SCALE - 0.5   # (h_s,)
+    xd = ((px_g[None, :] - cx) / f).astype(np.float32)   # (1, w_s) → broadcast
+    yd = ((py_g[:, None] - cy) / f).astype(np.float32)   # (h_s, 1)
+    xd = np.broadcast_to(xd, (h_s, w_s)).copy()
+    yd = np.broadcast_to(yd, (h_s, w_s)).copy()
+    xn, yn = xd.copy(), yd.copy()
+    for _ in range(5):
+        r2 = xn * xn + yn * yn
+        s  = 1.0 + k1 * r2 + k2 * r2 * r2
+        xn = xd / s
+        yn = yd / s
+    nm    = np.sqrt(1.0 + xn * xn + yn * yn)
+    v_cam = np.stack([1.0 / nm, -xn / nm, -yn / nm]).astype(np.float32)  # (3,h_s,w_s)
+    R_f   = plate.R.astype(np.float32)
+    v_cel = np.einsum('ij,jhw->ihw', R_f.T, v_cam)       # (3, h_s, w_s)
+
+    # Accumulate per-pixel "transparency" t = ∏(1 − α_i).  Since each constellation
+    # blends the same constant `color` over the same base image, the final result
+    # is order-independent: out = t · base + (1−t) · color.  This lets us do the
+    # 3-channel blend just once at the end instead of per-constellation.
+    transparency = np.ones((h_s, w_s), dtype=np.float32)
+
+    half_diag_rad = np.radians(plate.fov_deg / 2.0 * np.sqrt(2.0))
+    boresight     = plate.R[0].astype(np.float64)
+    R64           = plate.R.astype(np.float64)
+
+    for entry in art_db.values():
+        anc_img = entry['anchors_img']   # (3, 2) in image-native coords
+        anc_hip = entry['anchors_hip']   # (3,) HIP IDs
+
+        # Collect sky unit vectors for the three anchor stars.
+        v_list = []
+        for k in range(3):
+            hip_id = int(anc_hip[k])
+            if hip_id not in hip_coords:
+                break
+            ra_d, dec_d = hip_coords[hip_id]
+            ra_r, dec_r = np.radians(ra_d), np.radians(dec_d)
+            v_list.append(np.array([
+                np.cos(dec_r) * np.cos(ra_r),
+                np.cos(dec_r) * np.sin(ra_r),
+                np.sin(dec_r),
+            ], dtype=np.float64))
+        if len(v_list) < 3:
+            continue
+
+        v1, v2, v3 = v_list
+
+        # Centroid c and tangent basis at c.
+        c = v1 + v2 + v3;  c /= np.linalg.norm(c)
+        cos_to_boresight = float(c @ boresight)
+
+        # Coarse cull: if centroid lies more than (half_diag + 3·max_anchor_angle)
+        # outside the FOV the constellation cannot intersect the image.
+        max_anc_cos = min(float(v1 @ c), float(v2 @ c), float(v3 @ c))
+        max_anc_rad = np.arccos(np.clip(max_anc_cos, -1.0, 1.0))
+        if cos_to_boresight < np.cos(half_diag_rad + 3.0 * max_anc_rad + np.radians(5.0)):
+            continue
+
+        # Orthonormal tangent-plane basis at c.
+        arb = np.array([0., 0., 1.]) if abs(c[2]) < 0.9 else np.array([1., 0., 0.])
+        e1  = np.cross(c, arb);  e1 /= np.linalg.norm(e1)
+        e2  = np.cross(c, e1)
+
+        # Gnomonic project 3 anchor sky vectors → tangent-plane 2-D.
+        t_pts = np.array([
+            [float(vi @ e1) / float(vi @ c), float(vi @ e2) / float(vi @ c)]
+            for vi in [v1, v2, v3]
+        ])  # (3, 2)
+
+        # Affine A (2×3): tangent-plane → art-pixel.
+        t_h = np.column_stack([t_pts, np.ones(3)])
+        try:
+            A = np.linalg.solve(t_h, anc_img.astype(np.float64))    # (3, 2)
+        except np.linalg.LinAlgError:
+            continue
+
+        # Decode PNG lazily — only constellations past the cull pay this cost.
+        art_img = _get_art_image(entry)
+        ih_a, iw_a = art_img.shape[:2]
+
+        # ── per-constellation bounding box ───────────────────────────────────
+        # Inverse-affine the 4 art image corners back to tangent plane, then
+        # to unit vectors, then forward-project (ideal pinhole — no distortion)
+        # to image pixels.  Slice v_cel to this bbox so per-pixel work scales
+        # with the constellation's footprint rather than the whole image.
+        # A has shape (3, 2): A.T (2,3) maps [t_x, t_y, 1] → [art_x, art_y].
+        A_T = A.T
+        try:
+            A_2x2_inv = np.linalg.inv(A_T[:, :2])
+        except np.linalg.LinAlgError:
+            continue
+        corners_pix = np.array(
+            [[0, 0], [iw_a, 0], [iw_a, ih_a], [0, ih_a]], dtype=np.float64)
+        t_corners = (corners_pix - A_T[:, 2]) @ A_2x2_inv.T      # (4, 2)
+        norms_c   = np.sqrt(1.0 + (t_corners ** 2).sum(axis=1))  # (4,)
+        v_corners = ((c[None, :]
+                      + t_corners[:, 0:1] * e1[None, :]
+                      + t_corners[:, 1:2] * e2[None, :])
+                     / norms_c[:, None])                         # (4, 3)
+        v_cam_c   = v_corners @ R64.T                            # (4, 3)
+        xc        = v_cam_c[:, 0]
+        if (xc <= 0.05).any():
+            # at least one corner behind/at camera — fall back to full grid
+            y0, y1, x0, x1 = 0, h_s, 0, w_s
+        else:
+            px = -v_cam_c[:, 1] / xc * plate.f + plate.cx
+            py = -v_cam_c[:, 2] / xc * plate.f + plate.cy
+            # ¼-resolution pixel indices, with 1-block padding for safety
+            x0 = max(0,  int(np.floor(px.min() / SCALE)) - 1)
+            x1 = min(w_s, int(np.ceil (px.max() / SCALE)) + 1)
+            y0 = max(0,  int(np.floor(py.min() / SCALE)) - 1)
+            y1 = min(h_s, int(np.ceil (py.max() / SCALE)) + 1)
+            if x0 >= x1 or y0 >= y1:
+                continue
+
+        h_b, w_b = y1 - y0, x1 - x0
+        v_sub = v_cel[:, y0:y1, x0:x1].reshape(3, -1)            # (3, h_b*w_b)
+        M = np.stack([c, e1, e2]).astype(np.float32)             # (3, 3)
+        dots = (M @ v_sub).reshape(3, h_b, w_b)
+        dot_c, dot_e1, dot_e2 = dots[0], dots[1], dots[2]
+
+        front  = dot_c > 0.01
+        safe_c = np.where(front, dot_c, 1.0)
+        t_x = dot_e1 / safe_c
+        t_y = dot_e2 / safe_c
+
+        A_f = A.astype(np.float32)
+        ax = A_f[0, 0]*t_x + A_f[1, 0]*t_y + A_f[2, 0]
+        ay = A_f[0, 1]*t_x + A_f[1, 1]*t_y + A_f[2, 1]
+
+        in_art = (front
+                  & (ax >= 0.0) & (ax < iw_a - 0.5)
+                  & (ay >= 0.0) & (ay < ih_a - 0.5))
+        if not bool(in_art.any()):
+            continue
+        ax_i   = np.clip(np.round(ax).astype(np.int32), 0, iw_a - 1)
+        ay_i   = np.clip(np.round(ay).astype(np.int32), 0, ih_a - 1)
+
+        art_vals = art_img[ay_i, ax_i].astype(np.float32)
+        alpha    = np.where(in_art, art_vals * (opacity / 255.0), 0.0)
+
+        transparency[y0:y1, x0:x1] *= (1.0 - alpha)
+
+    # ── one combined 3-channel blend, then upsample the colour delta ──────────
+    img_small = np.array(
+        Image.fromarray(img).resize((w_s, h_s), Image.BOX), dtype=np.float32)
+    tint     = np.array(color, dtype=np.float32)
+    t_3      = transparency[..., np.newaxis]
+    img_s_f  = t_3 * img_small + (1.0 - t_3) * tint            # (h_s, w_s, 3)
+
+    delta_small = img_s_f - img_small                          # (h_s, w_s, 3)
+    delta_full  = np.array(
+        Image.fromarray(
+            np.clip(delta_small + 128.0, 0.0, 255.0).astype(np.uint8)
+        ).resize((w, h), Image.BILINEAR),
+        dtype=np.float32,
+    ) - 128.0                                                  # (h, w, 3)
+    img[:] = np.clip(img.astype(np.float32) + delta_full, 0, 255).astype(np.uint8)
+    if mask is not None:
+        m = mask > 128
+        img[m] = saved[m]
+    return img
 
 
 # ── constellation lines ───────────────────────────────────────────────────────

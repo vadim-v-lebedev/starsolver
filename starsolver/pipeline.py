@@ -19,6 +19,7 @@ from plate import Plate
 from config import Config
 import json
 from draw import (load_image, draw_detections, draw_constellations, draw_star_names,
+                  draw_constellation_art,
                   _draw_circles_with_alpha, _mag_alpha,
                   _draw_refine_labels, _draw_special_labels, draw_timestamp)
 
@@ -263,6 +264,11 @@ class Pipeline:
         d = self.config.draw
         draw_mask = self.detection_mask if d.mask_constellations else None
 
+        if d.show_constellation_art:
+            draw_constellation_art(img, self.plate,
+                                   opacity=d.constellation_art_opacity,
+                                   color=d.constellation_art_color,
+                                   mask=draw_mask)
         draw_constellations(img, self.plate,
                             color=d.constellation_color,
                             thickness=d.constellation_thickness,
@@ -328,6 +334,11 @@ class Pipeline:
         d = self.config.draw
         draw_mask = self.detection_mask if d.mask_constellations else None
 
+        if d.show_constellation_art:
+            draw_constellation_art(out_img, refined_plate,
+                                   opacity=d.constellation_art_opacity,
+                                   color=d.constellation_art_color,
+                                   mask=draw_mask)
         draw_constellations(out_img, refined_plate,
                             color=d.constellation_color,
                             thickness=d.constellation_thickness,

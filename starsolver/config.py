@@ -16,6 +16,9 @@ class DrawConfig:
     show_timestamp: bool      = False
     show_unknown: bool        = True
     text_size: int            = 48
+    show_constellation_art: bool  = False
+    constellation_art_opacity: float = 0.8
+    constellation_art_color: tuple   = (200, 170, 130)
 
 
 @dataclass

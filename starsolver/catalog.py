@@ -249,6 +249,20 @@ def _get_hip_coords() -> Dict[int, Tuple[float, float]]:
     return _load_catalog()[-1]
 
 
+@cache
+def _get_hip_coords_all() -> Dict[int, Tuple[float, float]]:
+    """HIP → (ra_deg, dec_deg) for every star in the loaded catalog.
+
+    Unlike _get_hip_coords(), this is not filtered to constellation-line stars,
+    so it covers art-anchor stars that don't appear in any line.
+    """
+    ra_rad, dec_rad, _, _, hip_ids = _get_hip_catalog()
+    ra_deg  = np.degrees(ra_rad)
+    dec_deg = np.degrees(dec_rad)
+    return {int(hip_ids[i]): (float(ra_deg[i]), float(dec_deg[i]))
+            for i in range(len(hip_ids))}
+
+
 def _hip_id_for_radec(ra_deg: float, dec_deg: float) -> int:
     """Return the HIP ID of the catalog star nearest to (ra_deg, dec_deg)."""
     ra_rad_arr, dec_rad_arr, _, _, hip_ids, _ = _load_catalog()
