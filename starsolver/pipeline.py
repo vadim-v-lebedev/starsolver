@@ -65,7 +65,7 @@ class Pipeline:
         self.plate            = None  # Plate object (set after successful solve)
         self.timestamp        = None  # ISO 8601 string from EXIF, or None
         self.fov_hint         = None  # None=auto from EXIF; float=explicit (°, long axis); False=disabled
-        self.detection_mask   = None  # uint8 numpy array (image coords) from apply_mask, or None
+        self.detection_mask   = None  # uint8 numpy array (image coords) from set_mask, or None
 
     @staticmethod
     def read_exif(image_path: str) -> dict:
@@ -165,56 +165,35 @@ class Pipeline:
             'count': len(self.stars),
         }
 
-    def apply_mask(self, image_path: str, output_path: str,
-                   mask_bytes: bytes, mask_w: int, mask_h: int) -> dict:
+    def set_mask(self, image_path: str,
+                 mask_bytes: bytes, mask_w: int, mask_h: int) -> dict:
         """
-        Remove detections that fall inside the painted mask and redraw.
+        Store a painted mask as self.detection_mask (in image coords), without
+        touching current detections. It works before any detection exists, so
+        the mask can be used as a Detect-stage input:
+        subsequent detect() excludes stars inside it, and solve()/refine() use
+        it for drawing when mask_constellations is on.
 
-        mask_bytes: flat uint8 alpha array, row-major, shape (mask_h, mask_w)
-        Returns {'count': int, 'message': str}
+        mask_bytes: flat uint8 alpha array, row-major, shape (mask_h, mask_w).
+        An empty mask (no bytes, or zero dimensions) clears the mask.
+        Returns {'message': str}.
         """
-        if not self.stars:
-            return {'count': 0, 'message': 'No detections to mask.'}
+        if not mask_bytes or mask_w == 0 or mask_h == 0:
+            self.detection_mask = None
+            return {'message': 'Mask cleared.'}
 
         mask = np.frombuffer(mask_bytes, dtype=np.uint8).reshape(mask_h, mask_w)
-
         img = load_image(image_path)
         ih, iw = img.shape[:2]
-        sx = mask_w / iw
-        sy = mask_h / ih
-
-        # Scale mask to image coordinates for later use in drawing
-        img_mask = np.array(
+        self.detection_mask = np.array(
             Image.fromarray(mask).resize((iw, ih), Image.NEAREST)
         )
-        self.detection_mask = img_mask
+        return {'message': 'Mask applied.'}
 
-        before = len(self.stars)
-        self.stars = [
-            s for s in self.stars
-            if mask[min(int(s['y'] * sy), mask_h - 1),
-                    min(int(s['x'] * sx), mask_w - 1)] < 128
-        ]
-        removed = before - len(self.stars)
-        self.plate = None
-
-        d = self.config.draw
-        draw_detections(img, self.stars,
-                        color=d.detection_color, thickness=d.circle_thickness,
-                        star_radius=d.star_radius, max_draw=d.max_draw)
-        Image.fromarray(img).save(output_path, quality=95)
-
-        n = len(self.stars)
-        msg = f'Removed {removed} detection{"s" if removed != 1 else ""}. {n} remaining.'
-        return {'count': n, 'message': msg}
-
-    def solve(self, image_path: str, output_path: str,
-              timeout_override=None) -> dict:
+    def solve(self, image_path: str, output_path: str) -> dict:
         """
         Plate-solve the previously detected stars.
         Saves image with constellation lines and matched-star circles to output_path.
-
-        timeout_override: None = use config timeout; 0 = no timeout (unlimited).
 
         Returns dict with keys:
             status:  'solved' | 'no_solution' | 'too_few_stars'
@@ -229,12 +208,7 @@ class Pipeline:
         exif_data = self.read_exif(image_path)
         self.timestamp = exif_data["timestamp"]
 
-        if timeout_override == 0:
-            timeout = None          # unlimited
-        elif timeout_override is not None:
-            timeout = timeout_override
-        else:
-            timeout = self.config.solve.timeout_ms
+        timeout = self.config.solve.timeout_ms
 
         fov_estimate = fov_max_error = None
         if self.fov_hint is not False:
