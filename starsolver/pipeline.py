@@ -298,6 +298,7 @@ class Pipeline:
 
         refined_plate = Plate.from_dict(result)
         refined_plate.timestamp = self.timestamp
+        self.plate = refined_plate   # refinement supersedes the solve plate
         out_img = load_image(image_path)
         d = self.config.draw
         draw_mask = self.detection_mask if d.mask_constellations else None
@@ -385,7 +386,7 @@ class Pipeline:
             'unknowns': unknowns,
             'specials': special_matches,
         })
-        return {
+        out = {
             'status':         'refined',
             'RA':             result['RA'],
             'Dec':            result['Dec'],
@@ -401,6 +402,12 @@ class Pipeline:
             'dec_max':        result.get('dec_max', 0.0),
             'objects_json':   objects_json,
         }
+        # Also expose the full refined plate (Roll, f, cx, cy, k1, k2, w, h) so
+        # callers can rebuild it with Plate.from_dict(result) — the RA/Dec/FOV
+        # keys above are kept at full precision and are not overwritten.
+        out.update({k: v for k, v in refined_plate.to_dict().items()
+                    if k not in out})
+        return out
 
 
 def main():

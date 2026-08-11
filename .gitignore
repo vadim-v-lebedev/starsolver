@@ -6,6 +6,9 @@ __pycache__/
 # Testing
 .pytest_cache/
 
+# Virtualenv
+.venv/
+
 # Package build / install
 *.egg-info/
 dist/
