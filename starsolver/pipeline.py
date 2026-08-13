@@ -23,8 +23,8 @@ from draw import (load_image, draw_detections, draw_constellations, draw_star_na
                   _draw_refine_labels, _draw_special_labels, draw_timestamp)
 
 
-def _enrich_unknowns(plate, unknowns):
-    """Add nearest visible catalog star info to each unknown detection dict."""
+def _enrich_unknowns(plate, unknowns, phot_b, phot_sig, sigma_r):
+    """Add nearest (by joint spatial+photometric likelihood) catalog star to each unknown."""
     if not unknowns:
         return
     from catalog import _get_hip_catalog, _get_all_bayer_names
@@ -43,15 +43,17 @@ def _enrich_unknowns(plate, unknowns):
     vis_dec = np.degrees(dec_rad[vis])
     names   = _get_all_bayer_names()
     for u in unknowns:
-        dists = np.sqrt((vis_px - u['x']) ** 2 + (vis_py - u['y']) ** 2)
-        ni    = int(np.argmin(dists))
+        d2    = (vis_px - u['x']) ** 2 + (vis_py - u['y']) ** 2
+        dm    = u['pred_mag'] - vis_mag
+        cost  = d2 / (sigma_r ** 2) + (dm / phot_sig) ** 2
+        ni    = int(np.argmin(cost))
         hip   = int(vis_hip[ni])
         u['nearest_hip']     = hip
         u['nearest_name']    = names.get(hip, '')
         u['nearest_ra']      = round(float(vis_ra[ni]),  4)
         u['nearest_dec']     = round(float(vis_dec[ni]), 4)
         u['nearest_mag']     = round(float(vis_mag[ni]), 2)
-        u['nearest_dist_px'] = round(float(dists[ni]),   1)
+        u['nearest_dist_px'] = round(float(np.sqrt(d2[ni])), 1)
         pm = u.get('pred_mag')
         u['mag_diff'] = round(float(pm) - float(vis_mag[ni]), 1) if pm is not None else None
 
@@ -63,7 +65,7 @@ class Pipeline:
         self.plate            = None  # Plate object (set after successful solve)
         self.timestamp        = None  # ISO 8601 string from EXIF, or None
         self.fov_hint         = None  # None=auto from EXIF; float=explicit (°, long axis); False=disabled
-        self.detection_mask   = None  # uint8 numpy array (image coords) from apply_mask, or None
+        self.detection_mask   = None  # uint8 numpy array (image coords) from set_mask, or None
 
     @staticmethod
     def read_exif(image_path: str) -> dict:
@@ -163,56 +165,35 @@ class Pipeline:
             'count': len(self.stars),
         }
 
-    def apply_mask(self, image_path: str, output_path: str,
-                   mask_bytes: bytes, mask_w: int, mask_h: int) -> dict:
+    def set_mask(self, image_path: str,
+                 mask_bytes: bytes, mask_w: int, mask_h: int) -> dict:
         """
-        Remove detections that fall inside the painted mask and redraw.
+        Store a painted mask as self.detection_mask (in image coords), without
+        touching current detections. It works before any detection exists, so
+        the mask can be used as a Detect-stage input:
+        subsequent detect() excludes stars inside it, and solve()/refine() use
+        it for drawing when mask_constellations is on.
 
-        mask_bytes: flat uint8 alpha array, row-major, shape (mask_h, mask_w)
-        Returns {'count': int, 'message': str}
+        mask_bytes: flat uint8 alpha array, row-major, shape (mask_h, mask_w).
+        An empty mask (no bytes, or zero dimensions) clears the mask.
+        Returns {'message': str}.
         """
-        if not self.stars:
-            return {'count': 0, 'message': 'No detections to mask.'}
+        if not mask_bytes or mask_w == 0 or mask_h == 0:
+            self.detection_mask = None
+            return {'message': 'Mask cleared.'}
 
         mask = np.frombuffer(mask_bytes, dtype=np.uint8).reshape(mask_h, mask_w)
-
         img = load_image(image_path)
         ih, iw = img.shape[:2]
-        sx = mask_w / iw
-        sy = mask_h / ih
-
-        # Scale mask to image coordinates for later use in drawing
-        img_mask = np.array(
+        self.detection_mask = np.array(
             Image.fromarray(mask).resize((iw, ih), Image.NEAREST)
         )
-        self.detection_mask = img_mask
+        return {'message': 'Mask applied.'}
 
-        before = len(self.stars)
-        self.stars = [
-            s for s in self.stars
-            if mask[min(int(s['y'] * sy), mask_h - 1),
-                    min(int(s['x'] * sx), mask_w - 1)] < 128
-        ]
-        removed = before - len(self.stars)
-        self.plate = None
-
-        d = self.config.draw
-        draw_detections(img, self.stars,
-                        color=d.detection_color, thickness=d.circle_thickness,
-                        star_radius=d.star_radius, max_draw=d.max_draw)
-        Image.fromarray(img).save(output_path, quality=95)
-
-        n = len(self.stars)
-        msg = f'Removed {removed} detection{"s" if removed != 1 else ""}. {n} remaining.'
-        return {'count': n, 'message': msg}
-
-    def solve(self, image_path: str, output_path: str,
-              timeout_override=None) -> dict:
+    def solve(self, image_path: str, output_path: str) -> dict:
         """
         Plate-solve the previously detected stars.
         Saves image with constellation lines and matched-star circles to output_path.
-
-        timeout_override: None = use config timeout; 0 = no timeout (unlimited).
 
         Returns dict with keys:
             status:  'solved' | 'no_solution' | 'too_few_stars'
@@ -227,12 +208,7 @@ class Pipeline:
         exif_data = self.read_exif(image_path)
         self.timestamp = exif_data["timestamp"]
 
-        if timeout_override == 0:
-            timeout = None          # unlimited
-        elif timeout_override is not None:
-            timeout = timeout_override
-        else:
-            timeout = self.config.solve.timeout_ms
+        timeout = self.config.solve.timeout_ms
 
         fov_estimate = fov_max_error = None
         if self.fov_hint is not False:
@@ -322,6 +298,7 @@ class Pipeline:
 
         refined_plate = Plate.from_dict(result)
         refined_plate.timestamp = self.timestamp
+        self.plate = refined_plate   # refinement supersedes the solve plate
         out_img = load_image(image_path)
         d = self.config.draw
         draw_mask = self.detection_mask if d.mask_constellations else None
@@ -339,8 +316,10 @@ class Pipeline:
             mask=draw_mask,
         )
 
-        unknowns = result['unknown_detections']
-        _enrich_unknowns(refined_plate, unknowns)
+        unknowns  = result['unknown_detections']
+        sigma_r_px = result['RMSE'] * result['w'] / (result['FOV'] * 3600.0)
+        _enrich_unknowns(refined_plate, unknowns,
+                         result['phot_b'], result['phot_sig'], max(sigma_r_px, 3.0))
 
         # ── special object matching (planets + deep-sky) ─────────────────
         arcsec_per_px = refined_plate.fov_deg * 3600.0 / refined_plate.w
@@ -412,7 +391,7 @@ class Pipeline:
             'unknowns': unknowns,
             'specials': special_matches,
         })
-        return {
+        out = {
             'status':         'refined',
             'RA':             result['RA'],
             'Dec':            result['Dec'],
@@ -428,6 +407,12 @@ class Pipeline:
             'dec_max':        result.get('dec_max', 0.0),
             'objects_json':   objects_json,
         }
+        # Also expose the full refined plate (Roll, f, cx, cy, k1, k2, w, h) so
+        # callers can rebuild it with Plate.from_dict(result) — the RA/Dec/FOV
+        # keys above are kept at full precision and are not overwritten.
+        out.update({k: v for k, v in refined_plate.to_dict().items()
+                    if k not in out})
+        return out
 
 
 def main():

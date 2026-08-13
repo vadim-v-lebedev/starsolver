@@ -16,6 +16,9 @@ dependencies = [
 [project.scripts]
 starsolver = "starsolver.pipeline:main"
 
+[tool.setuptools]
+packages = ["starsolver"]
+
 [tool.setuptools.package-data]
 starsolver = ["hip.npz", "constellation_borders.npz", "tetra3_database.npz", "*.ttf", "*.csv", "*.pkl"]
 

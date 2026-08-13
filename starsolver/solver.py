@@ -28,8 +28,8 @@ def plate_solve(stars: List[Dict], image_width: int, image_height: int,
     """
     Attempt blind plate solving on detected star positions.
 
-    return_matches: if True, forces solve_timeout=None and includes matched_stars /
-                    matched_centroids in the result (needed for intrinsics fitting).
+    return_matches: if True, includes matched_stars / matched_centroids in the
+                    result (needed for intrinsics fitting).
     """
     if len(stars) < 4:
         return None

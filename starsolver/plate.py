@@ -117,6 +117,9 @@ class Plate:
         xn       = np.where(in_front, -v_cam[:, 1] / safe, 0.0)
         yn       = np.where(in_front, -v_cam[:, 2] / safe, 0.0)
         r2       = xn ** 2 + yn ** 2
+        # filter the part where distortion model goes of the rail
+        if self.k2 < 0:
+            in_front = in_front & (r2 < -self.k1 / self.k2)
         d        = 1.0 + self.k1 * r2 + self.k2 * r2 ** 2
         return self.f * xn * d + self.cx, self.f * yn * d + self.cy, in_front
 
