@@ -167,17 +167,90 @@
       background: #3a2020;
     }
 
-    /* ── fov row ───────────────────────────────────────────────────────────── */
+    /* ── stepper (pipeline breadcrumb) ─────────────────────────────────────── */
 
-    #fov-row {
+    #stepper {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 5px 12px;
+      gap: 4px;
+      padding: 8px 12px 4px;
       background: #0e0e1c;
       border-top: 1px solid #1e1e38;
       font-size: 12px;
+      overflow-x: auto;
+    }
+
+    #stepper .step {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: #4a4a6a;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+
+    #stepper .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #1a1a30;
+      color: #6a6a90;
+      font-size: 11px;
+    }
+
+    #stepper .step.done {
+      color: #6a80c0;
+    }
+
+    #stepper .step.done .step-num {
+      background: #24346a;
+      color: #a0c0ff;
+    }
+
+    #stepper .step.current {
+      color: #c0c8ff;
+    }
+
+    #stepper .step.current .step-num {
+      background: #4466ff;
+      color: #fff;
+    }
+
+    #stepper .step-sep {
+      color: #2a2a44;
+      flex: 0 0 auto;
+    }
+
+    /* ── contextual stage input panel ──────────────────────────────────────── */
+
+    #stage-panel {
+      background: #0e0e1c;
+      padding: 0 12px;
+    }
+
+    .stage-body {
+      display: none;
+      padding: 6px 0;
+    }
+
+    .stage-body.active {
+      display: block;
+    }
+
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
       color: #9090b8;
+      padding: 3px 0;
+    }
+
+    .input-row > label:first-child {
+      min-width: 74px;
     }
 
     #fovHintLabel {
@@ -187,6 +260,7 @@
       white-space: nowrap;
       cursor: pointer;
       user-select: none;
+      min-width: 74px;
     }
 
     #fovHintEnabled {
@@ -196,31 +270,128 @@
       cursor: pointer;
     }
 
-    #fovSlider {
+    .input-row input[type=range] {
       flex: 1;
       accent-color: #4466ff;
     }
 
-    #fovSlider:disabled {
+    .input-row input[type=range]:disabled {
       opacity: 0.3;
     }
 
-    #fovVal {
-      width: 34px;
+    .input-row .val {
+      width: 52px;
       text-align: right;
       color: #6060a0;
       font-size: 12px;
     }
 
-    /* ── buttons ───────────────────────────────────────────────────────────── */
+    .stage-hint {
+      font-size: 11px;
+      color: #667;
+      padding: 4px 0 2px;
+      line-height: 1.4;
+    }
 
-    #buttons {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
+    /* image-stage source pickers + examples */
+    #source-buttons {
+      display: flex;
       gap: 6px;
-      padding: 8px;
+    }
+
+    #source-buttons button {
+      flex: 1;
+    }
+
+    .examples-label {
+      font-size: 11px;
+      color: #667;
+      padding: 11px 0 7px;
+    }
+
+    #examples {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .example {
+      cursor: pointer;
+      border: 1px solid #24243c;
+      border-radius: 8px;
+      overflow: hidden;
+      width: 112px;
+      transition: border-color 0.1s;
+    }
+
+    .example:active {
+      border-color: #4466ff;
+    }
+
+    .example img {
+      display: block;
+      width: 112px;
+      height: 74px;
+      object-fit: cover;
+    }
+
+    .example .cap {
+      font-size: 10px;
+      color: #8888b0;
+      padding: 3px 6px;
+    }
+
+    /* ── action bar (back / mask / run / continue) ─────────────────────────── */
+
+    #action-bar {
+      display: flex;
+      gap: 6px;
+      padding: 8px 12px;
       background: #0e0e1c;
-      border-top: 1px solid #1e1e38;
+    }
+
+    #action-bar button {
+      flex: 1;
+    }
+
+    #action-bar button.hidden {
+      display: none;
+    }
+
+    #action-bar #btnRun:not(:disabled) {
+      flex: 1.4;
+      background: #24346a;
+      color: #cfe0ff;
+    }
+
+    #action-bar #btnRun:not(:disabled):active {
+      background: #33499a;
+    }
+
+    #action-bar #btnContinue:not(:disabled) {
+      flex: 1.4;
+      background: #1e6a3a;
+      color: #d0ffe0;
+    }
+
+    #action-bar #btnContinue:not(:disabled):active {
+      background: #2a8a4e;
+    }
+
+    /* ── persistent bar (always available) ─────────────────────────────────── */
+
+    #persistent-bar {
+      display: flex;
+      gap: 6px;
+      padding: 0 12px 10px;
+      background: #0e0e1c;
+      border-bottom: 1px solid #1e1e38;
+    }
+
+    #persistent-bar button {
+      flex: 1;
+      font-size: 13px;
+      padding: 10px 4px;
     }
 
     button {
@@ -249,25 +420,6 @@
     button.active:not(:disabled) {
       background: #1e2d5a;
       color: #a0c0ff;
-    }
-
-    /* 6-column grid so bottom two buttons share the last row equally */
-    #buttons {
-      grid-template-columns: repeat(6, 1fr);
-    }
-
-    #btnLoad,
-    #btnDetect,
-    #btnMask,
-    #btnSolve,
-    #btnRefine,
-    #btnSave {
-      grid-column: span 2;
-    }
-
-    #btnSettings,
-    #btnAchievements {
-      grid-column: span 3;
     }
 
     /* ── panorama viewer ───────────────────────────────────────────────────── */
@@ -768,18 +920,60 @@
     <button id="btnResetSettings">Reset to defaults</button>
   </div>
 
-  <div id="fov-row">
-    <label id="fovHintLabel"><input type="checkbox" id="fovHintEnabled" checked> FOV</label>
-    <input type="range" id="fovSlider" min="20" max="130" value="76" disabled>
-    <span id="fovVal">—</span>
+  <div id="stepper">
+    <div class="step" data-stage="image"><span class="step-num">1</span>Load</div>
+    <span class="step-sep">›</span>
+    <div class="step" data-stage="detect"><span class="step-num">2</span>Detect</div>
+    <span class="step-sep">›</span>
+    <div class="step" data-stage="solve"><span class="step-num">3</span>Solve</div>
+    <span class="step-sep">›</span>
+    <div class="step" data-stage="refine"><span class="step-num">4</span>Refine</div>
   </div>
 
-  <div id="buttons">
-    <button id="btnLoad" disabled>Load</button>
-    <button id="btnDetect" disabled>Detect</button>
-    <button id="btnMask" disabled>Mask</button>
-    <button id="btnSolve" disabled>Solve</button>
-    <button id="btnRefine" disabled>Refine</button>
+  <div id="stage-panel">
+    <!-- IMAGE: choose a source -->
+    <div class="stage-body" data-stage="image">
+      <div id="source-buttons">
+        <button id="btnPick" disabled>Choose photo</button>
+      </div>
+      <div class="examples-label">No photo of your own? Try an example:</div>
+      <div id="examples"></div>
+    </div>
+
+    <!-- DETECT: threshold -->
+    <div class="stage-body" data-stage="detect">
+      <div class="input-row">
+        <label>Threshold</label>
+        <input type="range" id="threshSlider" min="-3" max="3" step="0.25" value="0">
+        <span class="val" id="threshVal">—</span>
+      </div>
+      <div class="stage-hint">Lower the threshold to detect fainter stars, raise it to keep only the brightest, then press Detect. Paint a Mask to exclude foreground.</div>
+    </div>
+
+    <!-- SOLVE: FOV hint -->
+    <div class="stage-body" data-stage="solve">
+      <div class="input-row">
+        <label id="fovHintLabel"><input type="checkbox" id="fovHintEnabled" checked> FOV hint</label>
+        <input type="range" id="fovSlider" min="20" max="130" value="76" disabled>
+        <span class="val" id="fovVal">—</span>
+      </div>
+      <div class="stage-hint">Blind plate-solving finds where the camera pointed. A rough FOV hint speeds it up; uncheck it to let the solver search freely.</div>
+    </div>
+
+    <!-- REFINE: mask only -->
+    <div class="stage-body" data-stage="refine">
+      <div class="stage-hint">Refinement fits lens distortion and identifies every detection — stars, planets and Messier objects. Tap a marker for details. Paint a Mask to exclude regions.</div>
+    </div>
+  </div>
+
+  <div id="action-bar">
+    <button id="btnBack" class="hidden">Back</button>
+    <button id="btnMask" class="hidden" disabled>Mask</button>
+    <button id="btnRun" class="hidden" disabled>Run</button>
+    <button id="btnContinue" class="hidden" disabled>Next</button>
+  </div>
+
+  <div id="persistent-bar">
     <button id="btnSave" disabled>Save</button>
     <button id="btnSettings" disabled>Settings</button>
     <button id="btnAchievements" disabled>Achievements</button>
@@ -823,26 +1017,38 @@
     let currentImageFile = null;
     let currentImageBytes = null;
     const imageStore = new Map();  // filename → { bytes|null, ra, dec, fov, plate }
-    let starsOk = false;
     let solvedOk = false;
-    let solveUnlimited = false;
     let currentImageTimestamp = null;   // ISO string from EXIF, or null
-    let detectThreshold = 20.0;
+    let detectCount = 0;                // stars found by the last detection
     let currentFovEstimate = null;  // long-axis FOV from EXIF, degrees, or null
     let currentObjects = null;  // {stars, unknowns, specials} from last refine
+    let stage = 'boot';         // boot | image | detect | solve | refine
+    const STAGE_ORDER = ['image', 'detect', 'solve', 'refine'];
+
+    // Prompt shown when a stage is entered by navigation, so the hint always
+    // matches the stage's pending action instead of the previous result.
+    const STAGE_PROMPTS = {
+      image: 'Choose a photo or try an example below.',
+      detect: 'Press Detect to find stars.',
+      solve: 'Press Solve to run tetra3 solver.',
+      refine: 'Press Refine to identify all detected objects via iterative refinement.',
+    };
 
     // ── DOM ───────────────────────────────────────────────────────────────────────
     const elStatus = document.getElementById('status');
     const elPreview = document.getElementById('preview');
     const elHolder = document.getElementById('placeholder');
     const elProgress = document.getElementById('progress-bar');
-    const btnLoad = document.getElementById('btnLoad');
-    const btnDetect = document.getElementById('btnDetect');
+    const btnPick = document.getElementById('btnPick');
+    const btnBack = document.getElementById('btnBack');
     const btnMask = document.getElementById('btnMask');
-    const btnSolve = document.getElementById('btnSolve');
-    const btnRefine = document.getElementById('btnRefine');
+    const btnRun = document.getElementById('btnRun');
+    const btnContinue = document.getElementById('btnContinue');
     const btnSave = document.getElementById('btnSave');
     const btnSettings = document.getElementById('btnSettings');
+    const btnAchievements = document.getElementById('btnAchievements');
+    const elThreshSlider = document.getElementById('threshSlider');
+    const elThreshVal = document.getElementById('threshVal');
 
     // ── helpers ───────────────────────────────────────────────────────────────────
     function setStatus(msg) { elStatus.textContent = msg; }
@@ -853,23 +1059,71 @@
       elProgress.style.width = pct + '%';
     }
 
-    function setButtons({ load = false, detect = false, mask = false,
-      solve = false, refine = false, save = false,
-      settings = false, achievements = false } = {}) {
-      btnLoad.disabled = !load;
-      btnDetect.disabled = !detect;
-      btnMask.disabled = !mask;
-      btnSolve.disabled = !solve;
-      btnRefine.disabled = !refine;
-      btnSave.disabled = !save;
-      btnSettings.disabled = !settings;
-      btnAchievements.disabled = !achievements;
-      [btnDetect, btnSolve, btnRefine].forEach(b => b.classList.remove('active'));
+    // ── pipeline stage machine ─────────────────────────────────────────────────────
+    // The UI shows only what is relevant at the current pipeline position: the next
+    // step, a way back, and the inputs for this stage. Each loop stage (detect/solve/
+    // refine) can be re-run with tweaked inputs before advancing.
+    const stageIdx = s => STAGE_ORDER.indexOf(s);
+
+    function setStage(s) { stage = s; renderStage(); }
+
+    // Navigate to a stage and refresh the hint to that stage's pending action.
+    function navTo(s) { setStage(s); setStatus(STAGE_PROMPTS[s]); }
+
+    function _showBtn(btn, label) {
+      btn.classList.remove('hidden');
+      if (label != null) btn.textContent = label;
+      btn.disabled = false;
+    }
+    const _hideBtn = btn => btn.classList.add('hidden');
+
+    function renderStage() {
+      const ready = !!pipeline;
+
+      // stepper breadcrumb: past stages 'done', current highlighted
+      document.querySelectorAll('#stepper .step').forEach(el => {
+        const s = el.dataset.stage;
+        el.classList.toggle('current', s === stage);
+        el.classList.toggle('done', stageIdx(stage) > -1 && stageIdx(s) < stageIdx(stage));
+      });
+
+      // reveal only the current stage's input body
+      document.querySelectorAll('.stage-body').forEach(el =>
+        el.classList.toggle('active', el.dataset.stage === stage));
+
+      // image-stage source picker
+      btnPick.disabled = !ready || busy;
+
+      // persistent bar — always available once the pipeline is ready
+      btnSettings.disabled = !ready;
+      btnAchievements.disabled = !ready;
+      btnSave.disabled = !solvedOk || busy;
+
+      // contextual action bar
+      [btnBack, btnMask, btnRun, btnContinue].forEach(_hideBtn);
+      if (busy || stage === 'boot' || stage === 'image') return;
+
+      // Next/Back are pure navigation; the Run button (stage verb) does the work.
+      _showBtn(btnBack, 'Back');
+      _showBtn(btnMask, 'Mask');
+      _showBtn(btnRun);
+
+      if (stage === 'detect') {
+        btnRun.textContent = 'Detect';
+        _showBtn(btnContinue, 'Next');
+        btnContinue.disabled = detectCount < 4;
+      } else if (stage === 'solve') {
+        btnRun.textContent = 'Solve';
+        _showBtn(btnContinue, 'Next');
+        btnContinue.disabled = !solvedOk;
+      } else if (stage === 'refine') {
+        btnRun.textContent = 'Refine';
+      }
     }
 
     function setBusy(on) {
       busy = on;
-      if (on) setButtons({});
+      renderStage();
     }
 
     // ── object popup ──────────────────────────────────────────────────────────────
@@ -911,7 +1165,9 @@
         const sub = obj.type ? `<br><span style="color:#888">${obj.type}</span>` : '';
         title = `<b>${obj.name}</b>${sub}`;
         catRaDec = _rdFmt(obj.ra, obj.dec);
+        catMag = obj.mag != null ? `${obj.mag.toFixed(1)}m` : '';
         obsRaDec = _rdFmt(obj.obs_ra, obj.obs_dec);
+        obsMag = obj.pred_mag != null ? `${obj.pred_mag.toFixed(2)}m` : '';
         residual = obj.pixel_error != null ? `${obj.pixel_error} px` : '—';
       }
 
@@ -998,6 +1254,15 @@
         // keep '—' only while still in the pre-image state
       }
     }
+
+    // ── detection threshold slider (log scale: threshold = 20 · 2^value) ───────────
+    const currentThreshold = () => 20 * Math.pow(2, parseFloat(elThreshSlider.value));
+
+    function renderThreshVal() {
+      elThreshVal.textContent = Math.round(currentThreshold());
+    }
+    elThreshSlider.addEventListener('input', renderThreshVal);
+    renderThreshVal();
 
     async function fetchText(url) {
       const r = await fetch(url);
@@ -1181,7 +1446,6 @@
       }
     }
 
-    const btnAchievements = document.getElementById('btnAchievements');
     btnAchievements.addEventListener('click', () => {
       const panel = document.getElementById('achievements-panel');
       const settings = document.getElementById('settings-panel');
@@ -1423,7 +1687,7 @@
 
     const SS_FILES = ['pipeline.py', 'detector.py', 'solver.py', 'refine.py',
       'plate.py', 'draw.py', 'catalog.py', 'minicv.py', 'config.py',
-      'panorama.py', 'planets.py', 'deepsky.py'];
+      'panorama.py', 'miniephem.py', 'deepsky.py'];
     const T3_FILES = ['__init__.py', 'tetra3.py'];
 
     async function initPyodide() {
@@ -1462,6 +1726,10 @@
         setProgress(55);
         setStatus('Fetching star catalog…');
         pyodide.FS.writeFile('/ss/hip.npz', await fetchBinary(`${CDN_SS}/hip.npz`));
+        pyodide.FS.writeFile('/ss/planets.pkl',
+          await fetchBinary(`${CDN_SS}/planets.pkl`));
+        pyodide.FS.writeFile('/ss/asteroids_short.pkl',
+          await fetchBinary(`${CDN_SS}/asteroids_short.pkl`));
 
         setProgress(70);
         setStatus('Fetching pattern database…');
@@ -1492,8 +1760,8 @@ pano     = Panorama(width=${_initPs.resolution}, blend='${_initPs.blend}')
         setProgress(100);
         await sleep(300);
         setProgress(null);
-        setStatus('Ready — pick or take an image.');
-        setButtons({ load: true, settings: true, achievements: true });
+        setStatus('Ready — choose a photo or try an example below.');
+        setStage('image');
 
       } catch (e) {
         setProgress(null);
@@ -1509,17 +1777,13 @@ pano     = Panorama(width=${_initPs.resolution}, blend='${_initPs.blend}')
       pyodide.FS.writeFile(imagePath, currentImageBytes);
       showImage(currentImageBytes);
       currentImageFile = file.name;
-      starsOk = false;
       solvedOk = false;
-      solveUnlimited = false;
+      detectCount = 0;
       currentImageTimestamp = null;
-      detectThreshold = 20.0;
       currentObjects = null;
       hidePopup();
-      btnDetect.textContent = 'Detect';
-      btnSolve.textContent = 'Solve';
-      setButtons({ load: true, detect: true, settings: true, achievements: true });
-      setStatus('Image loaded. Tap Detect.');
+      elThreshSlider.value = 0;   // threshold 20 (scale is 20 · 2^value)
+      renderThreshVal();
 
       // Read EXIF (timestamp + FOV estimate); fall back to file.lastModified for timestamp
       currentFovEstimate = null;
@@ -1537,6 +1801,11 @@ pano     = Panorama(width=${_initPs.resolution}, blend='${_initPs.blend}')
       fovHintOn = currentFovEstimate !== null;
       elFovHintEnabled.checked = fovHintOn;
       elFovSlider.disabled = !fovHintOn;
+
+      // Selecting a source moves into the Detect stage; processing waits for the
+      // user to press Detect (navigation never launches processing).
+      setStage('detect');
+      setStatus('Image loaded. Press Detect to find stars.');
     }
 
     document.getElementById('inputGallery').addEventListener('change', e => {
@@ -1544,14 +1813,65 @@ pano     = Panorama(width=${_initPs.resolution}, blend='${_initPs.blend}')
       e.target.value = '';
     });
 
-    btnLoad.addEventListener('click', () => document.getElementById('inputGallery').click());
+    btnPick.addEventListener('click', () => document.getElementById('inputGallery').click());
+
+    // Navigation across stages (independent of Run — see the stage machine).
+    btnBack.addEventListener('click', () => {
+      if (busy) return;
+      if (stage === 'refine') navTo('solve');
+      else if (stage === 'solve') navTo('detect');
+      else if (stage === 'detect') navTo('image');
+    });
+
+    btnRun.addEventListener('click', () => {
+      if (busy) return;
+      if (stage === 'detect') runDetect();
+      else if (stage === 'solve') runSolve();
+      else if (stage === 'refine') runRefine();
+    });
+
+    // Next only navigates — it never launches processing (the Run button does).
+    btnContinue.addEventListener('click', () => {
+      if (busy) return;
+      if (stage === 'detect') navTo('solve');
+      else if (stage === 'solve') navTo('refine');
+    });
+
+    // ── example images ─────────────────────────────────────────────────────────────
+    const EXAMPLES = [
+      { thumb: 'images/thumb-cloud.jpg', full: 'images/example-cloud.jpg',
+        name: 'example-cloud.jpg', cap: 'Rural sky' },
+      { thumb: 'images/thumb-depomall.jpg', full: 'images/example-depomall.jpg',
+        name: 'example-depomall.jpg', cap: 'City' },
+    ];
+    {
+      const box = document.getElementById('examples');
+      for (const ex of EXAMPLES) {
+        const div = document.createElement('div');
+        div.className = 'example';
+        div.innerHTML = `<img src="${ex.thumb}" alt="${ex.cap}"><div class="cap">${ex.cap}</div>`;
+        div.addEventListener('click', async () => {
+          if (busy || !pipeline) return;
+          setStatus(`Loading ${ex.cap} example…`);
+          try {
+            const resp = await fetch(ex.full);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const blob = await resp.blob();
+            await onImageFile(new File([blob], ex.name, { type: blob.type || 'image/jpeg' }));
+          } catch (err) {
+            setStatus('Could not load example: ' + (err.message || err));
+          }
+        });
+        box.appendChild(div);
+      }
+    }
 
     // ── detect ────────────────────────────────────────────────────────────────────
-    btnDetect.addEventListener('click', async () => {
+    async function runDetect() {
       if (busy || !pipeline) return;
       setBusy(true);
-      const thr = detectThreshold;
-      setStatus(`Detecting stars (threshold=${thr})…`);
+      const thr = currentThreshold();
+      setStatus(`Detecting stars (threshold=${Math.round(thr)})…`);
       await sleep(30);
 
       try {
@@ -1561,33 +1881,27 @@ pano     = Panorama(width=${_initPs.resolution}, blend='${_initPs.blend}')
         r.destroy();
 
         showImage(pyodide.FS.readFile(outputPath));
-        detectThreshold = thr / 2;
-        btnDetect.textContent = 'Detect more';
+        detectCount = n;
         solvedOk = false;
-        solveUnlimited = false;
-        btnSolve.textContent = 'Solve';
+        currentObjects = null;
         setFovSlider({ enabled: true });
 
         const hint = n < 4
-          ? `\nToo few stars — tap Detect more (threshold=${detectThreshold.toFixed(0)})`
-          : '';
-        starsOk = n >= 1;
-        setStatus(`${msg} · threshold=${thr}${hint}`);
-        setButtons({ load: true, detect: true, mask: starsOk, solve: n >= 4, settings: true, achievements: true });
-
+          ? '\nToo few stars — lower the threshold and press Detect.'
+          : '\nTap Next to proceed or change the settings and run detection again.';
+        setStatus(`${msg} · threshold=${Math.round(thr)}${hint}`);
       } catch (e) {
         setStatus('Detect error: ' + e.message);
-        setButtons({ load: true, detect: true, settings: true, achievements: true });
         console.error(e);
       }
-      busy = false;
-    });
+      setBusy(false);
+    }
 
     // ── solve ─────────────────────────────────────────────────────────────────────
-    btnSolve.addEventListener('click', async () => {
+    async function runSolve() {
       if (busy || !pipeline) return;
       setBusy(true);
-      setStatus(solveUnlimited ? 'Solving (no timeout)…' : 'Solving…');
+      setStatus('Solving…');
       await sleep(30);
 
       try {
@@ -1595,9 +1909,7 @@ pano     = Panorama(width=${_initPs.resolution}, blend='${_initPs.blend}')
         pyodide.runPython(fovHintOn
           ? `pipeline.fov_hint = ${parseFloat(elFovSlider.value)}`
           : 'pipeline.fov_hint = False');
-        const r = solveUnlimited
-          ? pipeline.solve(imagePath, outputPath, 0)
-          : pipeline.solve(imagePath, outputPath);
+        const r = pipeline.solve(imagePath, outputPath);
         const status = r.get('status').toString();
 
         if (status === 'solved') {
@@ -1613,8 +1925,9 @@ pano     = Panorama(width=${_initPs.resolution}, blend='${_initPs.blend}')
           showImage(pyodide.FS.readFile(outputPath));
           setFovSlider({ enabled: false, value: parseFloat(fov) });
           solvedOk = true;
-          solveUnlimited = false;
-          btnSolve.textContent = 'Solve';
+          currentObjects = null;  // a fresh solve supersedes any prior refine
+
+          hidePopup();
           updateAchievements({ constellations: cons ? cons.split(', ') : [], imageFile: currentImageFile });
           const plateDict = JSON.parse(pyodide.runPython('import json; json.dumps(pipeline.plate.to_dict())'));
           imageStore.set(currentImageFile, {
@@ -1625,37 +1938,29 @@ pano     = Panorama(width=${_initPs.resolution}, blend='${_initPs.blend}')
           saveImageStore();
           let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} matches  ${t}s`;
           if (cons) msg += `\n${cons}`;
+          msg += '\nSolved — tap Next to continue to Refine stage.';
           setStatus(msg);
-          setButtons({ load: true, detect: true, mask: starsOk, solve: true, refine: true, save: true, settings: true, achievements: true });
 
         } else {
           r.destroy();
           solvedOk = false;
           setFovSlider({ enabled: true });
           if (status === 'too_few_stars') {
-            solveUnlimited = false;
-            btnSolve.textContent = 'Solve';
-            setStatus('Too few stars for plate solving — try Detect ÷2.');
-          } else if (solveUnlimited) {
-            setStatus('No solution found even without time limit.');
+            setStatus('Too few stars for plate solving — go Back to Detect and lower the threshold.');
           } else {
-            solveUnlimited = true;
-            btnSolve.textContent = 'Solve ∞';
-            setStatus('No plate solution found — tap Solve ∞ to retry without timeout.');
+            setStatus('No plate solution found — try adjusting the FOV hint, or go Back and re-detect.');
           }
-          setButtons({ load: true, detect: true, mask: starsOk, solve: true, settings: true, achievements: true });
         }
 
       } catch (e) {
         setStatus('Solve error: ' + e.message);
-        setButtons({ load: true, detect: true, mask: starsOk, solve: true, settings: true, achievements: true });
         console.error(e);
       }
-      busy = false;
-    });
+      setBusy(false);
+    }
 
     // ── refine ────────────────────────────────────────────────────────────────────
-    btnRefine.addEventListener('click', async () => {
+    async function runRefine() {
       if (busy || !pipeline) return;
       setBusy(true);
       setStatus('Refining solution…');
@@ -1691,22 +1996,20 @@ pano     = Panorama(width=${_initPs.resolution}, blend='${_initPs.blend}')
           const plStr = specials ? `  ${specials}` : '';
           let msg = `RA=${ra}°  Dec=${dec}°  FOV=${fov}°  RMSE=${rmse}"  ${n} id  lim=${lim}m  ${t}s${unkStr}${plStr}`;
           if (cons) msg += `\n${cons}`;
+          msg += '\nTap any marker for details, or Save the image.';
           setStatus(msg);
-          setButtons({ load: true, detect: true, mask: starsOk, solve: true, refine: true, save: true, settings: true, achievements: true });
 
         } else {
           r.destroy();
           setStatus('Refinement failed — try re-solving.');
-          setButtons({ load: true, detect: true, mask: starsOk, solve: solvedOk, refine: solvedOk, settings: true, achievements: true });
         }
 
       } catch (e) {
         setStatus('Refine error: ' + e.message);
-        setButtons({ load: true, detect: true, mask: starsOk, solve: solvedOk, refine: solvedOk, settings: true, achievements: true });
         console.error(e);
       }
-      busy = false;
-    });
+      setBusy(false);
+    }
 
     // ── mask editor ───────────────────────────────────────────────────────────────
     {
@@ -1753,7 +2056,11 @@ pano     = Panorama(width=${_initPs.resolution}, blend='${_initPs.blend}')
       maskCanvas.addEventListener('pointercancel', () => { maskDrawing = false; });
 
       function openMaskEditor() {
-        const data = pyodide.FS.readFile(outputPath);
+        // Prefer the annotated output; fall back to the raw image if detection
+        // hasn't run yet (mask can be painted as a pre-detection input).
+        let data;
+        try { data = pyodide.FS.readFile(outputPath); }
+        catch { data = pyodide.FS.readFile(imagePath); }
         const url = URL.createObjectURL(new Blob([data], { type: 'image/jpeg' }));
         editor.classList.add('open');
         maskBg.onload = () => {
@@ -1805,35 +2112,35 @@ pano     = Panorama(width=${_initPs.resolution}, blend='${_initPs.blend}')
         // extract alpha channel only
         const alpha = new Uint8Array(maskCanvas.width * maskCanvas.height);
         for (let i = 0; i < alpha.length; i++) alpha[i] = imgData.data[i * 4 + 3];
+        const hasMask = alpha.some(v => v > 128);
 
         editor.classList.remove('open');
 
-        if (!alpha.some(v => v > 128)) {
-          setStatus('Mask was empty — nothing removed.');
-          return;
-        }
-
-        setBusy(true);
-        setStatus('Applying mask…');
+        // Store the mask (an empty mask clears it), then re-run the current stage
+        // so its effect is visible immediately. Note: we set busy manually here
+        // because the run* functions release it themselves and bail if it's set.
+        busy = true;
+        renderStage();
+        setStatus(hasMask ? 'Applying mask…' : 'Clearing mask…');
         await sleep(30);
         try {
-          pyodide.globals.set('_mask_bytes', alpha);
+          pyodide.globals.set('_mask_bytes', hasMask ? alpha : new Uint8Array(0));
           pyodide.globals.set('_mask_w', maskCanvas.width);
           pyodide.globals.set('_mask_h', maskCanvas.height);
-          const r = JSON.parse(pyodide.runPython(
-            `import json; json.dumps(pipeline.apply_mask('${imagePath}', '${outputPath}',` +
-            ` bytes(_mask_bytes), int(_mask_w), int(_mask_h)))`
-          ));
-          starsOk = r.count >= 1;
-          solvedOk = false;
-          showImage(pyodide.FS.readFile(outputPath));
-          setStatus(r.message);
+          pyodide.runPython(
+            `pipeline.set_mask('${imagePath}', bytes(_mask_bytes), int(_mask_w), int(_mask_h))`
+          );
         } catch (e) {
           setStatus('Mask error: ' + e.message);
           console.error(e);
+          busy = false;
+          renderStage();
+          return;
         }
-        busy = false;
-        setButtons({ load: true, detect: true, mask: starsOk, solve: starsOk, settings: true, achievements: true });
+        busy = false;   // release before re-running the stage
+        if (stage === 'solve') await runSolve();
+        else if (stage === 'refine') await runRefine();
+        else await runDetect();
       });
     }
 
@@ -2103,12 +2410,7 @@ pano.add_image('/tmp/pano_in.jpg', _plate)
         console.error(err);
       }
       busy = false;
-      setButtons({
-        load: true,
-        detect: !!currentImageFile, mask: starsOk,
-        solve: solvedOk, refine: solvedOk, save: solvedOk,
-        settings: true, achievements: true,
-      });
+      renderStage();
     }
 
     document.getElementById('achImageList').addEventListener('click', async e => {
@@ -2154,12 +2456,7 @@ pano.add_image('/tmp/pano_in.jpg', _plate)
         console.error(e);
       }
       busy = false;
-      setButtons({
-        load: true,
-        detect: !!currentImageFile, mask: starsOk,
-        solve: solvedOk, refine: solvedOk, save: solvedOk,
-        settings: true, achievements: true,
-      });
+      renderStage();
       btnViewPano.disabled = false;
       btnExportPano.disabled = false;
     });
@@ -2182,12 +2479,7 @@ pano.add_image('/tmp/pano_in.jpg', _plate)
         console.error(e);
       }
       busy = false;
-      setButtons({
-        load: true,
-        detect: !!currentImageFile, mask: starsOk,
-        solve: solvedOk, refine: solvedOk, save: solvedOk,
-        settings: true, achievements: true,
-      });
+      renderStage();
       btnViewPano.disabled = false;
       btnExportPano.disabled = false;
     });

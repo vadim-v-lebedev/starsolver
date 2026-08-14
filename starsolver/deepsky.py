@@ -31,21 +31,23 @@ def _load_catalog() -> List[Dict]:
     with open(path, encoding='utf-8') as f:
         next(f)  # skip header
         for line in f:
-            parts = line.rstrip('\n').split(',', 3)
+            parts = line.rstrip('\n').split(',', 4)
             if len(parts) < 4:
                 continue
-            messier = parts[0].strip()
+            messier  = parts[0].strip()
             obj_type = parts[1].strip()
-            ra      = _parse_ra(parts[2])
-            dec     = _parse_dec(parts[3])
+            ra       = _parse_ra(parts[2])
+            dec      = _parse_dec(parts[3])
             if ra is None or dec is None:
                 continue
+            mag = float(parts[4].strip()) if len(parts) >= 5 and parts[4].strip() else None
             catalog.append({
                 'messier': messier,
                 'type':    obj_type,
                 'name':    messier,
                 'ra':      ra,
                 'dec':     dec,
+                'mag':     mag,
             })
     return catalog
 
@@ -92,12 +94,14 @@ def match_deepsky(plate, unknown_dets: List[Dict],
             taken.add(best_i)
             det = unknown_dets[best_i]
             matched.append({
-                'name':    obj['name'],
-                'messier': obj['messier'],
-                'ra':      round(obj['ra'],  4),
-                'dec':     round(obj['dec'], 4),
-                'x':       det['x'],
-                'y':       det['y'],
+                'name':       obj['name'],
+                'messier':    obj['messier'],
+                'ra':         round(obj['ra'],  4),
+                'dec':        round(obj['dec'], 4),
+                'mag':        obj['mag'],
+                'x':          det['x'],
+                'y':          det['y'],
+                'brightness': det.get('brightness'),
             })
 
     for i in sorted(taken, reverse=True):
