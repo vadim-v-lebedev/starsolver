@@ -3,6 +3,7 @@ Drawing functions for star field overlays.
 
 All functions modify the passed-in numpy image (RGB) in-place and return it.
 """
+import io
 import os
 import numpy as np
 from PIL import Image, ImageDraw, ImageOps
@@ -48,45 +49,29 @@ _ART_CACHE = None
 
 
 def _load_constellation_art():
-    """Parse Stellarium's constellationsart.fab; defer PNG decoding to first use.
+    """Load the packed art bundle; defer PNG decoding to first use.
 
-    Returns {abbr: {'png_path', 'anchors_img', 'anchors_hip', 'image'}}.
+    Returns {abbr: {'png_bytes', 'anchors_img', 'anchors_hip', 'image'}}.
     'image' starts as None and is populated by _get_art_image on first access.
+    The bundle is built from Stellarium's constellationsart.fab by
+    tools/pack_constellation_art.py.
     """
     global _ART_CACHE
     if _ART_CACHE is not None:
         return _ART_CACHE
-    art_dir  = os.path.join(os.path.dirname(__file__), 'constellation_art')
-    fab_path = os.path.join(art_dir, 'constellationsart.fab')
-    if not os.path.exists(fab_path):
-        _ART_CACHE = {}
-        return _ART_CACHE
-    db = {}
-    with open(fab_path) as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            parts = line.split()
-            if len(parts) < 11:
-                continue
-            anc = np.array([
-                [float(parts[2]), float(parts[3])],
-                [float(parts[5]), float(parts[6])],
-                [float(parts[8]), float(parts[9])],
-            ], dtype=np.float32)
-            hips = np.array([int(parts[4]), int(parts[7]), int(parts[10])],
-                            dtype=np.int32)
-            png_path = os.path.join(art_dir, parts[1])
-            if not os.path.exists(png_path):
-                continue
-            db[parts[0]] = {
-                'png_path':    png_path,
-                'anchors_img': anc,
-                'anchors_hip': hips,
+    npz_path = os.path.join(os.path.dirname(__file__), 'constellation_art.npz')
+    with np.load(npz_path) as z:
+        abbr, anc, hips = z['abbr'], z['anchors_img'], z['anchors_hip']
+        blob, offs      = z['png_blob'], z['png_offsets']
+        _ART_CACHE = {
+            str(abbr[i]): {
+                'png_bytes':   blob[offs[i]:offs[i + 1]].tobytes(),
+                'anchors_img': anc[i],
+                'anchors_hip': hips[i],
                 'image':       None,   # decoded on first use
             }
-    _ART_CACHE = db
+            for i in range(len(abbr))
+        }
     return _ART_CACHE
 
 
@@ -94,7 +79,7 @@ def _get_art_image(entry):
     """Decode PNG on first access; cache the uint8 grayscale array in entry."""
     if entry['image'] is None:
         entry['image'] = np.asarray(
-            Image.open(entry['png_path']).convert('L'), dtype=np.uint8)
+            Image.open(io.BytesIO(entry['png_bytes'])), dtype=np.uint8)
     return entry['image']
 
 
@@ -107,7 +92,7 @@ def draw_constellation_art(img: np.ndarray, plate,
     Each output pixel is back-projected to a sky unit vector (undistortion is
     always valid for in-image pixels), then mapped to art-image coordinates via a
     gnomonic tangent-plane transform anchored by the three Hipparcos stars in the
-    .fab file.  This avoids applying the distortion polynomial to off-FOV anchor
+    art bundle.  This avoids applying the distortion polynomial to off-FOV anchor
     stars, which extrapolates unreliably.
 
     To keep drawing fast the back-projection and blending are done at 1/4
@@ -116,8 +101,6 @@ def draw_constellation_art(img: np.ndarray, plate,
     skipped via a two-stage cull (coarse centroid distance, then art bbox).
     """
     art_db = _load_constellation_art()
-    if not art_db:
-        return img
 
     try:
         # Use full catalog lookup — art anchors are not all in constellation lines.

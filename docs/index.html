@@ -671,7 +671,7 @@
         <input type="checkbox" id="cfgShowUnidentified" checked>
       </div>
       <div class="cfg-row">
-        <label>Constellation art <span style="font-size:0.8em;opacity:0.6">(2 MB)</span></label>
+        <label>Constellation art</label>
         <input type="checkbox" id="cfgConstellationArt">
       </div>
     </div>
@@ -1306,45 +1306,6 @@
       }
     }
 
-    let _artLoaded = false;
-    async function loadConstellationArt() {
-      if (_artLoaded) return;
-      try {
-        setStatus('Downloading constellation art (2 MB)…');
-        const ART_BASE = `${CDN_SS}/constellation_art`;
-        try { pyodide.FS.mkdir('/ss/constellation_art'); } catch (_) {}
-
-        // Fetch the manifest first; it lists which PNGs to pull.
-        const fabText = await fetchText(`${ART_BASE}/constellationsart.fab`);
-        pyodide.FS.writeFile('/ss/constellation_art/constellationsart.fab', fabText);
-        const fnames = fabText.split('\n')
-          .map(l => l.trim())
-          .filter(l => l && !l.startsWith('#'))
-          .map(l => l.split(/\s+/)[1])
-          .filter(Boolean);
-
-        // Download all PNGs in parallel.
-        const results = await Promise.all(fnames.map(async f => {
-          try {
-            const bytes = await fetchBinary(`${ART_BASE}/${f}`);
-            pyodide.FS.writeFile(`/ss/constellation_art/${f}`, bytes);
-            return true;
-          } catch (e) {
-            console.warn(`constellation art: ${f} failed`, e);
-            return false;
-          }
-        }));
-        const okCount = results.filter(Boolean).length;
-        _artLoaded = true;
-        setStatus(`Constellation art loaded (${okCount}/${fnames.length}).`);
-      } catch (err) {
-        setStatus('Constellation art download failed: ' + (err.message || err));
-        pipeline.config.draw.show_constellation_art = false;
-        document.getElementById('cfgConstellationArt').checked = false;
-        const s = loadSettings(); s.showConstellationArt = false; saveSettings(s);
-      }
-    }
-
     function initSettings() {
       applySettings(loadSettings());
 
@@ -1386,11 +1347,9 @@
         const s = loadSettings(); s.showUnidentified = e.target.checked; saveSettings(s);
       });
 
-      document.getElementById('cfgConstellationArt').addEventListener('change', async e => {
-        const on = e.target.checked;
-        if (on) await loadConstellationArt();
-        pipeline.config.draw.show_constellation_art = on && _artLoaded;
-        const s = loadSettings(); s.showConstellationArt = on && _artLoaded; saveSettings(s);
+      document.getElementById('cfgConstellationArt').addEventListener('change', e => {
+        pipeline.config.draw.show_constellation_art = e.target.checked;
+        const s = loadSettings(); s.showConstellationArt = e.target.checked; saveSettings(s);
       });
 
       wireSlider('cfgTextSize', 'cfgTextSizeVal', 'textSize', v => pipeline.config.draw.text_size = v);
@@ -1491,6 +1450,8 @@
           await fetchText(`${CDN_SS}/bayer.csv`));
         pyodide.FS.writeFile('/ss/constellation_borders.npz',
           await fetchBinary(`${CDN_SS}/constellation_borders.npz`));
+        pyodide.FS.writeFile('/ss/constellation_art.npz',
+          await fetchBinary(`${CDN_SS}/constellation_art.npz`));
 
         setStatus('Fetching tetra3…');
         pyodide.FS.mkdir('/ss/tetra3');
@@ -1526,12 +1487,6 @@ pano     = Panorama(width=${_initPs.resolution}, blend='${_initPs.blend}')
         if (loadSettings().starCatalog === 'tycho2') {
           setProgress(92);
           await loadExtendedCatalog();
-        }
-
-        if (loadSettings().showConstellationArt) {
-          setProgress(94);
-          await loadConstellationArt();
-          pipeline.config.draw.show_constellation_art = _artLoaded;
         }
 
         setProgress(100);
