@@ -53,8 +53,19 @@ def _load_constellation_art():
 
     Returns {abbr: {'png_bytes', 'anchors_img', 'anchors_hip', 'image'}}.
     'image' starts as None and is populated by _get_art_image on first access.
-    The bundle is built from Stellarium's constellationsart.fab by
-    tools/pack_constellation_art.py.
+
+    constellation_art.npz is vendored data, derived once from the western sky
+    culture of Stellarium (GPL): its constellationsart.fab table plus the 85
+    figure PNGs, converted to 8-bit grayscale.  Layout, for anyone rebuilding it:
+
+        abbr         (N,)      <U3     IAU abbreviation, e.g. 'Ori'
+        anchors_img  (N, 3, 2) float32 3 anchor points, art-image pixel coords
+        anchors_hip  (N, 3)    int32   HIP id of the star at each anchor
+        png_blob     (M,)      uint8   all PNG files concatenated
+        png_offsets  (N+1,)    int64   entry i is png_blob[o[i]:o[i+1]]
+
+    The anchor triples are what tie an art image to the sky; everything else in
+    the .fab (image dimensions) is recoverable from the PNGs themselves.
     """
     global _ART_CACHE
     if _ART_CACHE is not None:
