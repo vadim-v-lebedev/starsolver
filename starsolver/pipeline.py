@@ -238,8 +238,10 @@ class Pipeline:
         d = self.config.draw
         draw_mask = self.detection_mask if d.mask_constellations else None
 
-        # Constellation art is drawn only by refine(): the solve plate has no
-        # fitted distortion yet, so the figures drift visibly at the frame edges.
+        # The overlay toggles (show_constellations, show_constellation_art) govern
+        # refine() only.  Lines are what the solve preview is for, so they always
+        # draw here; art needs the fitted distortion refine() adds, or the figures
+        # drift visibly at the frame edges.
         draw_constellations(img, self.plate,
                             color=d.constellation_color,
                             thickness=d.constellation_thickness,
@@ -311,11 +313,12 @@ class Pipeline:
                                    opacity=d.constellation_art_opacity,
                                    color=d.constellation_art_color,
                                    mask=draw_mask)
-        draw_constellations(out_img, refined_plate,
-                            color=d.constellation_color,
-                            thickness=d.constellation_thickness,
-                            star_radius=d.star_radius,
-                            mask=draw_mask)
+        if d.show_constellations:
+            draw_constellations(out_img, refined_plate,
+                                color=d.constellation_color,
+                                thickness=d.constellation_thickness,
+                                star_radius=d.star_radius,
+                                mask=draw_mask)
         _draw_circles_with_alpha(
             out_img,
             [(int(round(s['x'])), int(round(s['y'])), _mag_alpha(s['mag']))

@@ -253,7 +253,7 @@
       min-width: 74px;
     }
 
-    #fovHintLabel, #artLabel {
+    #fovHintLabel, #artLabel, #linesLabel {
       display: flex;
       align-items: center;
       gap: 5px;
@@ -263,7 +263,7 @@
       min-width: 74px;
     }
 
-    #fovHintEnabled, #artEnabled {
+    #fovHintEnabled, #artEnabled, #linesEnabled {
       accent-color: #4466ff;
       width: 15px;
       height: 15px;
@@ -959,9 +959,10 @@
     <!-- REFINE: constellation art -->
     <div class="stage-body" data-stage="refine">
       <div class="input-row">
+        <label id="linesLabel"><input type="checkbox" id="linesEnabled" checked> Constellation lines</label>
         <label id="artLabel"><input type="checkbox" id="artEnabled"> Constellation art</label>
       </div>
-      <div class="stage-hint">Refinement fits lens distortion and identifies every detection — stars, planets and Messier objects. Turn on constellation art to overlay the classical figures. Tap a marker for details. Paint a Mask to exclude regions.</div>
+      <div class="stage-hint">Refinement fits lens distortion and identifies every detection — stars, planets and Messier objects. Choose which constellation overlays to draw, then press Run. Tap a marker for details. Paint a Mask to exclude regions.</div>
     </div>
   </div>
 
@@ -1243,17 +1244,23 @@
       elFovSlider.disabled = !fovSliderActive || !fovHintOn;
     });
 
-    // ── constellation art (refine stage) ──────────────────────────────────────────
-    // Art is drawn by pipeline.refine(), so this takes effect on the next Run —
+    // ── constellation overlays (refine stage) ─────────────────────────────────────
+    // Both are drawn by pipeline.refine(), so they take effect on the next Run —
     // same as Threshold and the FOV hint.  Re-rendering is the expensive part of
     // refine (the ICP fit is ~3% of it), so there is no cheaper redraw to offer.
     const elArtEnabled = document.getElementById('artEnabled');
+    const elLinesEnabled = document.getElementById('linesEnabled');
 
-    elArtEnabled.addEventListener('change', () => {
-      if (pipeline) pipeline.config.draw.show_constellation_art = elArtEnabled.checked;
-      const s = loadSettings(); s.showConstellationArt = elArtEnabled.checked; saveSettings(s);
-      if (currentObjects) setStatus('Press Run to redraw with the new setting.');
-    });
+    function wireOverlayToggle(el, drawKey, settingsKey) {
+      el.addEventListener('change', () => {
+        if (pipeline) pipeline.config.draw[drawKey] = el.checked;
+        const s = loadSettings(); s[settingsKey] = el.checked; saveSettings(s);
+        if (currentObjects) setStatus('Press Run to redraw with the new setting.');
+      });
+    }
+
+    wireOverlayToggle(elArtEnabled, 'show_constellation_art', 'showConstellationArt');
+    wireOverlayToggle(elLinesEnabled, 'show_constellations', 'showConstellationLines');
 
     function setFovSlider({ enabled, value = null }) {
       fovSliderActive = enabled;
@@ -1511,6 +1518,7 @@
       circleThickness: 2,
       detectionColor: '#00ff00',
       showConstellationArt: false,
+      showConstellationLines: true,
     };
 
     function hexToRgb(hex) {
@@ -1563,6 +1571,9 @@
 
       elArtEnabled.checked = !!s.showConstellationArt;
       d.show_constellation_art = !!s.showConstellationArt;
+
+      elLinesEnabled.checked = s.showConstellationLines !== false;
+      d.show_constellations = s.showConstellationLines !== false;
 
       document.getElementById('cfgCatalog').value = s.starCatalog || 'hipparcos';
 
